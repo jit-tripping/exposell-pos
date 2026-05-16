@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ExpoSell — Open Source Free POS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- AUTH SCREEN -->
+  <div id="auth-screen">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <span class="auth-icon">☕</span>
+        <div class="auth-brand-name">ExpoSell</div>
+        <div class="auth-brand-sub">Open Source Free POS</div>
+      </div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-login">Log in</button>
+        <button class="auth-tab" id="tab-signup">Sign up</button>
+      </div>
+      <div id="form-login" class="auth-form">
+        <div class="form-group"><label>Username</label><input type="text" id="login-username" placeholder="Username" autocomplete="username" /></div>
+        <div class="form-group"><label>Password</label><input type="password" id="login-password" placeholder="Password" autocomplete="current-password" /></div>
+        <div class="auth-error" id="login-error"></div>
+        <button class="btn-auth" id="login-btn">Log in</button>
+      </div>
+      <div id="form-signup" class="auth-form" style="display:none">
+        <div class="form-group"><label>Full Name</label><input type="text" id="signup-name" placeholder="Your name" /></div>
+        <div class="form-group"><label>Username</label><input type="text" id="signup-username" placeholder="Username" autocomplete="username" /></div>
+        <div class="form-group"><label>Password</label><input type="password" id="signup-password" placeholder="Password" autocomplete="new-password" /></div>
+        <div class="form-group"><label>Confirm Password</label><input type="password" id="signup-confirm" placeholder="Confirm password" autocomplete="new-password" /></div>
+        <div class="auth-error" id="signup-error"></div>
+        <button class="btn-auth" id="signup-btn">Create account</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="app" style="display:none">
+    <nav class="sidebar">
+      <div class="brand">
+        <span class="brand-icon">☕</span>
+        <div>
+          <div class="brand-name">ExpoSell</div>
+          <div class="brand-sub">Open Source Free POS</div>
+        </div>
+      </div>
+      <ul class="nav-links">
+        <li><button class="nav-btn active" data-page="pos"><span class="nav-icon">🛒</span> Sales</button></li>
+        <li><button class="nav-btn" data-page="inventory"><span class="nav-icon">📦</span> Inventory</button></li>
+        <li><button class="nav-btn" data-page="reports"><span class="nav-icon">📊</span> Reports</button></li>
+        <li><button class="nav-btn" data-page="invoice"><span class="nav-icon">🧾</span> Invoices</button></li>
+        <li><button class="nav-btn" data-page="admin"><span class="nav-icon">⚙️</span> Admin</button></li>
+      </ul>
+      <div class="sidebar-footer">
+        <div class="session-info">
+          <div class="session-label">Today</div>
+          <div class="session-total" id="sidebar-total">$0.00</div>
+        </div>
+        <div class="logged-in-user" id="logged-in-user"></div>
+        <button class="btn-logout" id="logout-btn">Log out</button>
+      </div>
+    </nav>
+
+    <main class="content">
+      <section id="page-pos" class="page active">
+        <div class="page-header">
+          <h1>Sales</h1>
+          <div class="header-actions"><button class="btn-outline" id="clear-cart-btn">Clear</button></div>
+        </div>
+        <div class="pos-layout">
+          <div class="product-panel">
+            <div class="search-bar"><input type="text" id="product-search" placeholder="Search..." /></div>
+            <div class="product-grid" id="product-grid"></div>
+          </div>
+          <div class="cart-panel">
+            <h2>Order</h2>
+            <div class="cart-items" id="cart-items"><div class="cart-empty">Add items from the left.</div></div>
+            <div class="cart-summary">
+              <div class="summary-row"><span>Subtotal</span><span id="subtotal">$0.00</span></div>
+              <div class="summary-row tax"><span>Tax (8%)</span><span id="tax">$0.00</span></div>
+              <div class="summary-row total"><span>Total</span><span id="total">$0.00</span></div>
+            </div>
+            <div class="payment-section">
+              <div class="payment-label">Pay with</div>
+              <div class="payment-methods">
+                <button class="pay-method active" data-method="cash">Cash</button>
+                <button class="pay-method" data-method="card">Card</button>
+                <button class="pay-method" data-method="qr">QR / Digital</button>
+              </div>
+              <div id="cash-input-area" class="cash-area">
+                <label>Cash given</label>
+                <input type="number" id="cash-received" placeholder="0.00" min="0" step="0.01" />
+                <div class="change-display" id="change-display"></div>
+              </div>
+              <button class="btn-checkout" id="checkout-btn">Charge</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-inventory" class="page">
+        <div class="page-header"><h1>Inventory</h1><button class="btn-primary" id="open-add-product">+ Add</button></div>
+        <div class="inventory-stats" id="inventory-stats"></div>
+        <div class="table-wrap">
+          <table class="data-table"><thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="inventory-tbody"></tbody></table>
+        </div>
+      </section>
+
+      <section id="page-reports" class="page">
+        <div class="page-header"><h1>Reports</h1><button class="btn-outline" id="export-csv-btn">Export</button></div>
+        <div class="report-stats" id="report-stats"></div>
+        <div class="reports-grid">
+          <div class="report-card"><h3>Best Sellers</h3><div id="top-products-list"></div></div>
+          <div class="report-card"><h3>History</h3><div class="sales-log" id="sales-log"></div></div>
+        </div>
+      </section>
+
+      <section id="page-invoice" class="page">
+        <div class="page-header">
+          <h1>Invoices</h1>
+          <div class="header-actions">
+            <button class="btn-outline" id="invoice-clear-btn">Clear</button>
+            <button class="btn-primary" id="invoice-preview-btn">Print</button>
+          </div>
+        </div>
+        <div class="invoice-layout">
+          <div class="invoice-builder">
+            <div class="inv-section"><h3>Your Info</h3><div class="form-row">
+              <div class="form-group"><label>Business Name</label><input type="text" id="inv-from-name" placeholder="My Business" /></div>
+              <div class="form-group"><label>Email</label><input type="text" id="inv-from-email" placeholder="email@school.edu" /></div>
+            </div></div>
+            <div class="inv-section"><h3>Customer</h3><div class="form-row">
+              <div class="form-group"><label>Customer Name</label><input type="text" id="inv-to-name" placeholder="Customer Name" /></div>
+              <div class="form-group"><label>Email / Contact</label><input type="text" id="inv-to-email" placeholder="customer@email.com" /></div>
+            </div></div>
+            <div class="inv-section"><h3>Details</h3><div class="form-row">
+              <div class="form-group"><label>Invoice #</label><input type="text" id="inv-number" placeholder="INV-001" /></div>
+              <div class="form-group"><label>Date</label><input type="date" id="inv-date" /></div>
+              <div class="form-group"><label>Due Date</label><input type="date" id="inv-due" /></div>
+            </div></div>
+            <div class="inv-section"><h3>Line Items</h3><div id="inv-line-items"></div>
+              <button class="btn-outline inv-add-line" id="inv-add-line-btn">+ Add row</button>
+            </div>
+            <div class="inv-section"><h3>Notes</h3>
+              <textarea id="inv-notes" rows="3" placeholder="Thank you for your support!"></textarea>
+            </div>
+          </div>
+          <div class="invoice-summary-panel">
+            <h3>Summary</h3>
+            <div class="inv-summary-rows" id="inv-summary"></div>
+            <div class="inv-tax-row"><label>Tax Rate (%)</label><input type="number" id="inv-tax" value="8" min="0" max="50" step="0.1" style="width:80px;text-align:right" /></div>
+            <div class="inv-total-display"><span>Total Due</span><span id="inv-grand-total">$0.00</span></div>
+            <div class="inv-saved-list" id="inv-saved-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-admin" class="page">
+        <div class="page-header"><h1>Settings</h1></div>
+        <div class="admin-grid">
+          <div class="admin-card"><h3>Your Business</h3>
+            <div class="form-group"><label>Business Name</label><input type="text" id="biz-name" value="My School Business" /></div>
+            <div class="form-group"><label>Tax Rate (%)</label><input type="number" id="tax-rate" value="8" min="0" max="30" step="0.1" /></div>
+            <div class="form-group"><label>Currency Symbol</label><input type="text" id="currency-sym" value="$" maxlength="2" /></div>
+            <button class="btn-primary" id="save-settings-btn">Save</button>
+          </div>
+          <div class="admin-card"><h3>Reset Data</h3>
+            <p class="admin-desc">Delete sales or reset everything.</p>
+            <button class="btn-outline" id="reset-sales-btn">Clear sales</button>
+            <button class="btn-outline danger" id="reset-all-btn">Reset everything</button>
+          </div>
+          <div class="admin-card"><h3>Low Stock</h3><div id="low-stock-list"></div></div>
+          <div class="admin-card"><h3>Accounts</h3><div id="accounts-list"></div></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- RECEIPT MODAL -->
+  <div class="modal-overlay" id="receipt-modal">
+    <div class="modal">
+      <div class="receipt" id="receipt-content"></div>
+      <div class="modal-actions">
+        <button class="btn-primary" id="print-receipt-btn">🖨 Print Receipt</button>
+        <button class="btn-outline" id="close-receipt-btn">New Sale</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD / EDIT PRODUCT MODAL -->
+  <div class="modal-overlay" id="product-modal">
+    <div class="modal">
+      <h2 id="product-modal-title">Add Product</h2>
+      <div class="form-group"><label>Product Name</label><input type="text" id="p-name" placeholder="Name" /></div>
+      <div class="form-group"><label>Category</label><input type="text" id="p-cat" placeholder="Category" /></div>
+      <div class="form-group"><label>Price ($)</label><input type="number" id="p-price" placeholder="0.00" min="0" step="0.01" /></div>
+      <div class="form-group"><label>Stock Quantity</label><input type="number" id="p-stock" placeholder="0" min="0" step="1" /></div>
+      <div class="form-group"><label>Emoji Icon</label><input type="text" id="p-emoji" placeholder="🍋" maxlength="2" /></div>
+      <div class="modal-actions">
+        <button class="btn-primary" id="save-product-btn">Save</button>
+        <button class="btn-outline" id="cancel-product-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
