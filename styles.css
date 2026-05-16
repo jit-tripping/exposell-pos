@@ -591,6 +591,120 @@ body {
 .account-name { font-weight: 500; }
 .account-user { font-size: 12px; color: var(--text3); font-family: 'DM Mono', monospace; }
 
+/* RESTAURANT */
+.r-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  background: var(--bg2);
+  padding: 4px;
+  border-radius: var(--r);
+  width: fit-content;
+}
+.r-tab {
+  padding: 7px 18px;
+  border: none;
+  background: none;
+  border-radius: var(--r-sm);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text2);
+  transition: background 0.15s, color 0.15s;
+}
+.r-tab:hover { background: var(--surface); color: var(--text); }
+.r-tab.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+
+.r-category-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.r-cat-tab {
+  padding: 5px 14px;
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  background: var(--surface);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: var(--text2);
+}
+.r-cat-tab:hover { background: var(--bg2); }
+.r-cat-tab.active { background: var(--text); color: #fff; border-color: var(--text); }
+
+/* Tables */
+.r-tables-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 12px;
+}
+.r-table-card {
+  border-radius: var(--r);
+  padding: 16px 12px;
+  text-align: center;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 0.1s, box-shadow 0.15s;
+  user-select: none;
+}
+.r-table-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.r-table-card.free { background: var(--green-light); border-color: #b8e0c8; }
+.r-table-card.occupied { background: var(--amber-light); border-color: #f5d5a8; }
+.r-table-card.selected { border-color: var(--accent) !important; box-shadow: 0 0 0 3px var(--accent-light); }
+.r-table-num { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; }
+.r-table-status { font-size: 12px; margin-top: 3px; color: var(--text2); }
+
+/* Kitchen */
+.kitchen-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+.kitchen-empty {
+  grid-column: 1/-1;
+  text-align: center;
+  color: var(--text3);
+  font-size: 15px;
+  padding: 40px 0;
+}
+.kitchen-ticket {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.kitchen-ticket.pending { border-color: var(--amber); }
+.kitchen-ticket.preparing { border-color: #4a90e2; }
+.kitchen-ticket.ready { border-color: var(--green); }
+
+.kt-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.kt-id { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; }
+.kt-type { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
+.kt-type.dine { background: var(--accent-light); color: var(--accent-dark); }
+.kt-type.take { background: #e8f0fe; color: #1a56db; }
+.kt-time { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text3); }
+
+.kt-items { border-top: 1px solid var(--border); padding-top: 8px; }
+.kt-item { font-size: 14px; padding: 3px 0; display: flex; justify-content: space-between; }
+.kt-qty { font-family: 'DM Mono', monospace; color: var(--text2); font-size: 13px; }
+
+.kt-actions { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--border); padding-top: 8px; }
+.kt-btn { padding: 6px 12px; border: none; border-radius: var(--r-sm); font-size: 13px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+.kt-btn.preparing { background: #e8f0fe; color: #1a56db; }
+.kt-btn.ready { background: var(--amber-light); color: var(--amber); }
+.kt-btn.done { background: var(--green-light); color: var(--green); }
+.kt-status-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; text-transform: capitalize; margin-left: auto; }
+.kt-status-badge.pending { background: var(--amber-light); color: var(--amber); }
+.kt-status-badge.preparing { background: #e8f0fe; color: #1a56db; }
+.kt-status-badge.ready { background: var(--green-light); color: var(--green); }
+.kt-status-badge.done { background: var(--bg2); color: var(--text3); }
+
 /* INVOICE */
 .invoice-layout { display: grid; grid-template-columns: 1fr 280px; gap: 20px; }
 .invoice-builder { display: flex; flex-direction: column; gap: 16px; }

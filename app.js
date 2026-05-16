@@ -186,6 +186,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     if (page === 'reports') renderReports();
     if (page === 'admin') renderAdmin();
     if (page === 'invoice') renderInvoicePage();
+    if (page === 'restaurant') initRestaurant();
   });
 });
 
@@ -967,7 +968,384 @@ function printInvoice(inv) {
   setTimeout(() => { win.print(); }, 500);
 }
 
-// ─── INIT ─────────────────────────────────────────────────────────────────────
+
+// ─── RESTAURANT MODULE ────────────────────────────────────────────────────────
+
+const DEFAULT_MENU = [
+  { id: 'r1', name: 'Garlic Bread', category: 'Starters', price: 4.00, emoji: '🥖', available: true },
+  { id: 'r2', name: 'Soup of the Day', category: 'Starters', price: 5.50, emoji: '🍲', available: true },
+  { id: 'r3', name: 'Burger', category: 'Mains', price: 10.00, emoji: '🍔', available: true },
+  { id: 'r4', name: 'Pasta', category: 'Mains', price: 9.00, emoji: '🍝', available: true },
+  { id: 'r5', name: 'Grilled Chicken', category: 'Mains', price: 12.00, emoji: '🍗', available: true },
+  { id: 'r6', name: 'Salad', category: 'Mains', price: 7.50, emoji: '🥗', available: true },
+  { id: 'r7', name: 'Lemonade', category: 'Drinks', price: 2.50, emoji: '🍋', available: true },
+  { id: 'r8', name: 'Water', category: 'Drinks', price: 1.00, emoji: '💧', available: true },
+  { id: 'r9', name: 'Soda', category: 'Drinks', price: 2.00, emoji: '🥤', available: true },
+  { id: 'r10', name: 'Brownie', category: 'Desserts', price: 4.50, emoji: '🍫', available: true },
+  { id: 'r11', name: 'Ice Cream', category: 'Desserts', price: 3.50, emoji: '🍨', available: true },
+];
+
+function loadRestaurantState() {
+  try {
+    const s = localStorage.getItem('exposell_restaurant');
+    if (s) return JSON.parse(s);
+  } catch(e) {}
+  return {
+    menu: JSON.parse(JSON.stringify(DEFAULT_MENU)),
+    orders: [],
+    tables: 10,
+    nextOrderId: 1,
+    nextMenuId: 100,
+  };
+}
+function saveRestaurantState() { localStorage.setItem('exposell_restaurant', JSON.stringify(rState)); }
+
+let rState = loadRestaurantState();
+let rCart = []; // { menuItem, qty, notes }
+let rOrderType = 'dine-in';
+let rSelectedTable = 1;
+let rMenuCategory = 'All';
+let rEditingMenuId = null;
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const rFmt = n => fmt(n);
+
+function rCartTotal() { return rCart.reduce((s, i) => s + i.price * i.qty, 0); }
+
+function getCategories() {
+  const cats = [...new Set(rState.menu.map(i => i.category))];
+  return ['All', ...cats];
+}
+
+// ── Main Render ───────────────────────────────────────────────────────────────
+function renderRestaurant() {
+  renderRMenuTabs();
+  renderRMenuGrid();
+  renderRCart();
+  renderRTables();
+  renderKitchen();
+  renderRMenuManager();
+}
+
+// ── Menu Tabs ─────────────────────────────────────────────────────────────────
+function renderRMenuTabs() {
+  const tabs = document.getElementById('r-category-tabs');
+  if (!tabs) return;
+  tabs.innerHTML = getCategories().map(cat => `
+    <button class="r-cat-tab ${rMenuCategory === cat ? 'active' : ''}" data-cat="${cat}">${cat}</button>
+  `).join('');
+  tabs.querySelectorAll('.r-cat-tab').forEach(btn => {
+    btn.addEventListener('click', () => { rMenuCategory = btn.dataset.cat; renderRMenuGrid(); renderRMenuTabs(); });
+  });
+}
+
+// ── Menu Grid ─────────────────────────────────────────────────────────────────
+function renderRMenuGrid() {
+  const grid = document.getElementById('r-menu-grid');
+  if (!grid) return;
+  const items = rState.menu.filter(i =>
+    (rMenuCategory === 'All' || i.category === rMenuCategory) && i.available
+  );
+  grid.innerHTML = items.length === 0
+    ? '<div style="color:var(--text3);padding:20px;grid-column:1/-1">No items.</div>'
+    : items.map(i => `
+    <div class="r-menu-card" data-rid="${i.id}">
+      <span class="product-emoji">${i.emoji}</span>
+      <div class="product-name">${i.name}</div>
+      <div class="product-price">${rFmt(i.price)}</div>
+      <div style="font-size:11px;color:var(--text3)">${i.category}</div>
+    </div>
+  `).join('');
+  grid.querySelectorAll('.r-menu-card').forEach(card => {
+    card.addEventListener('click', () => addToRCart(card.dataset.rid));
+  });
+}
+
+// ── Restaurant Cart ───────────────────────────────────────────────────────────
+function addToRCart(id) {
+  const item = rState.menu.find(i => i.id === id);
+  if (!item) return;
+  const existing = rCart.find(i => i.id === id);
+  if (existing) existing.qty++;
+  else rCart.push({ id, name: item.name, price: item.price, emoji: item.emoji, qty: 1 });
+  renderRCart();
+}
+
+function renderRCart() {
+  const el = document.getElementById('r-cart-items');
+  if (!el) return;
+
+  // Order type buttons
+  document.querySelectorAll('.r-order-type').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.type === rOrderType);
+  });
+
+  // Table selector
+  const tableRow = document.getElementById('r-table-row');
+  if (tableRow) tableRow.style.display = rOrderType === 'dine-in' ? 'flex' : 'none';
+
+  if (rCart.length === 0) {
+    el.innerHTML = '<div class="cart-empty">No items.<br/>Tap the menu to add.</div>';
+  } else {
+    el.innerHTML = rCart.map(item => `
+      <div class="cart-item">
+        <span class="ci-emoji">${item.emoji}</span>
+        <div class="ci-info"><div class="ci-name">${item.name}</div><div class="ci-price">${rFmt(item.price)} each</div></div>
+        <div class="ci-controls">
+          <button class="qty-btn" data-raction="dec" data-rid="${item.id}">−</button>
+          <span class="qty-val">${item.qty}</span>
+          <button class="qty-btn" data-raction="inc" data-rid="${item.id}">+</button>
+        </div>
+        <span class="ci-total">${rFmt(item.price * item.qty)}</span>
+      </div>
+    `).join('');
+    el.querySelectorAll('[data-raction]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = rCart.findIndex(i => i.id === btn.dataset.rid);
+        if (btn.dataset.raction === 'inc') rCart[idx].qty++;
+        else { rCart[idx].qty--; if (rCart[idx].qty <= 0) rCart.splice(idx, 1); }
+        renderRCart();
+      });
+    });
+  }
+
+  const total = rCartTotal();
+  const tax = total * (state.settings.taxRate / 100);
+  if (document.getElementById('r-subtotal')) {
+    document.getElementById('r-subtotal').textContent = rFmt(total);
+    document.getElementById('r-tax').textContent = rFmt(tax);
+    document.getElementById('r-total').textContent = rFmt(total + tax);
+  }
+}
+
+// ── Place Order ───────────────────────────────────────────────────────────────
+function setupROrderBtn() {
+  const btn = document.getElementById('r-place-order-btn');
+  if (!btn || btn.dataset.bound) return;
+  btn.dataset.bound = '1';
+  btn.addEventListener('click', () => {
+    if (rCart.length === 0) { toast('Add items first.'); return; }
+    const order = {
+      id: rState.nextOrderId++,
+      type: rOrderType,
+      table: rOrderType === 'dine-in' ? rSelectedTable : null,
+      items: JSON.parse(JSON.stringify(rCart)),
+      subtotal: rCartTotal(),
+      tax: rCartTotal() * (state.settings.taxRate / 100),
+      total: rCartTotal() * (1 + state.settings.taxRate / 100),
+      status: 'pending',
+      time: now(),
+      date: today(),
+    };
+    rState.orders.push(order);
+    saveRestaurantState();
+    rCart = [];
+    renderRCart();
+    renderKitchen();
+    renderRTables();
+    toast(`Order #${order.id} sent to kitchen!`);
+  });
+}
+
+// ── Tables View ───────────────────────────────────────────────────────────────
+function renderRTables() {
+  const grid = document.getElementById('r-tables-grid');
+  if (!grid) return;
+  const activeOrders = rState.orders.filter(o => o.type === 'dine-in' && o.status !== 'done');
+  const occupiedTables = new Set(activeOrders.map(o => o.table));
+  let html = '';
+  for (let t = 1; t <= rState.tables; t++) {
+    const isOccupied = occupiedTables.has(t);
+    const isSelected = rSelectedTable === t;
+    const tableOrders = activeOrders.filter(o => o.table === t);
+    html += `
+      <div class="r-table-card ${isOccupied ? 'occupied' : 'free'} ${isSelected ? 'selected' : ''}" data-table="${t}">
+        <div class="r-table-num">T${t}</div>
+        <div class="r-table-status">${isOccupied ? `${tableOrders.length} order${tableOrders.length > 1 ? 's' : ''}` : 'Free'}</div>
+      </div>
+    `;
+  }
+  grid.innerHTML = html;
+  grid.querySelectorAll('.r-table-card').forEach(card => {
+    card.addEventListener('click', () => {
+      rSelectedTable = parseInt(card.dataset.table);
+      rOrderType = 'dine-in';
+      document.querySelectorAll('.r-order-type').forEach(b => b.classList.toggle('active', b.dataset.type === 'dine-in'));
+      renderRTables();
+      renderRCart();
+      const sel = document.getElementById('r-table-select');
+      if (sel) sel.value = rSelectedTable;
+    });
+  });
+}
+
+// ── Kitchen Display ───────────────────────────────────────────────────────────
+function renderKitchen() {
+  const board = document.getElementById('kitchen-board');
+  if (!board) return;
+  const active = rState.orders.filter(o => o.status !== 'done');
+  if (active.length === 0) {
+    board.innerHTML = '<div class="kitchen-empty">No active orders. All clear! ✅</div>';
+    return;
+  }
+  board.innerHTML = active.map(o => `
+    <div class="kitchen-ticket ${o.status}">
+      <div class="kt-header">
+        <div>
+          <span class="kt-id">#${o.id}</span>
+          <span class="kt-type ${o.type === 'dine-in' ? 'dine' : 'take'}">${o.type === 'dine-in' ? `Table ${o.table}` : 'Takeaway'}</span>
+        </div>
+        <span class="kt-time">${o.time}</span>
+      </div>
+      <div class="kt-items">
+        ${o.items.map(i => `<div class="kt-item">${i.emoji} ${i.name} <span class="kt-qty">×${i.qty}</span></div>`).join('')}
+      </div>
+      <div class="kt-actions">
+        ${o.status === 'pending' ? `<button class="kt-btn preparing" data-oid="${o.id}" data-status="preparing">Start Cooking</button>` : ''}
+        ${o.status === 'preparing' ? `<button class="kt-btn ready" data-oid="${o.id}" data-status="ready">Ready</button>` : ''}
+        ${o.status === 'ready' ? `<button class="kt-btn done" data-oid="${o.id}" data-status="done">Done / Served</button>` : ''}
+        <span class="kt-status-badge ${o.status}">${o.status}</span>
+      </div>
+    </div>
+  `).join('');
+  board.querySelectorAll('[data-oid]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const order = rState.orders.find(o => o.id === parseInt(btn.dataset.oid));
+      if (order) { order.status = btn.dataset.status; saveRestaurantState(); renderKitchen(); renderRTables(); }
+    });
+  });
+}
+
+// ── Menu Manager ──────────────────────────────────────────────────────────────
+function renderRMenuManager() {
+  const tbody = document.getElementById('r-menu-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = rState.menu.map(i => `
+    <tr>
+      <td>${i.emoji} <strong>${i.name}</strong></td>
+      <td>${i.category}</td>
+      <td style="font-family:'DM Mono',monospace">${rFmt(i.price)}</td>
+      <td><span class="badge ${i.available ? 'badge-ok' : 'badge-out'}">${i.available ? 'On' : 'Off'}</span></td>
+      <td>
+        <div class="action-btns">
+          <button class="tbl-btn r-edit-menu-btn" data-rid="${i.id}">Edit</button>
+          <button class="tbl-btn r-toggle-btn" data-rid="${i.id}">${i.available ? 'Disable' : 'Enable'}</button>
+          <button class="tbl-btn del r-del-menu-btn" data-rid="${i.id}">Delete</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+  tbody.querySelectorAll('.r-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = rState.menu.find(i => i.id === btn.dataset.rid);
+      if (item) { item.available = !item.available; saveRestaurantState(); renderRMenuManager(); renderRMenuGrid(); }
+    });
+  });
+  tbody.querySelectorAll('.r-del-menu-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!confirm('Delete this item?')) return;
+      rState.menu = rState.menu.filter(i => i.id !== btn.dataset.rid);
+      saveRestaurantState(); renderRMenuManager(); renderRMenuGrid(); toast('Deleted.');
+    });
+  });
+  tbody.querySelectorAll('.r-edit-menu-btn').forEach(btn => {
+    btn.addEventListener('click', () => openRMenuModal(btn.dataset.rid));
+  });
+}
+
+function openRMenuModal(id) {
+  const item = id ? rState.menu.find(i => i.id === id) : null;
+  rEditingMenuId = id || null;
+  document.getElementById('r-menu-modal-title').textContent = item ? 'Edit Item' : 'Add Item';
+  document.getElementById('rm-name').value = item ? item.name : '';
+  document.getElementById('rm-cat').value = item ? item.category : '';
+  document.getElementById('rm-price').value = item ? item.price : '';
+  document.getElementById('rm-emoji').value = item ? item.emoji : '';
+  document.getElementById('r-menu-modal').classList.add('open');
+}
+
+// ── Wire up restaurant events (called once after DOM ready) ───────────────────
+function initRestaurant() {
+  // Sub-tab switching
+  document.querySelectorAll('.r-tab').forEach(tab => {
+    if (tab.dataset.bound) return;
+    tab.dataset.bound = '1';
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.r-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.r-tab-content').forEach(c => c.style.display = 'none');
+      tab.classList.add('active');
+      document.getElementById('r-tab-' + tab.dataset.rtab).style.display = 'block';
+      if (tab.dataset.rtab === 'kitchen') renderKitchen();
+      if (tab.dataset.rtab === 'tables') renderRTables();
+      if (tab.dataset.rtab === 'menu') renderRMenuManager();
+    });
+  });
+
+  // Refresh kitchen button
+  const refreshBtn = document.getElementById('r-refresh-kitchen');
+  if (refreshBtn && !refreshBtn.dataset.bound) {
+    refreshBtn.dataset.bound = '1';
+    refreshBtn.addEventListener('click', renderKitchen);
+  }
+
+
+  document.querySelectorAll('.r-order-type').forEach(btn => {
+    btn.addEventListener('click', () => {
+      rOrderType = btn.dataset.type;
+      renderRCart();
+      renderRTables();
+    });
+  });
+
+  // Table select dropdown
+  const tSel = document.getElementById('r-table-select');
+  if (tSel) {
+    tSel.innerHTML = Array.from({length: rState.tables}, (_, i) =>
+      `<option value="${i+1}">Table ${i+1}</option>`).join('');
+    tSel.addEventListener('change', () => { rSelectedTable = parseInt(tSel.value); renderRTables(); });
+  }
+
+  setupROrderBtn();
+
+  // Add menu item button
+  const addBtn = document.getElementById('r-add-menu-btn');
+  if (addBtn && !addBtn.dataset.bound) {
+    addBtn.dataset.bound = '1';
+    addBtn.addEventListener('click', () => openRMenuModal(null));
+  }
+
+  // Save menu item
+  const saveBtn = document.getElementById('r-save-menu-btn');
+  if (saveBtn && !saveBtn.dataset.bound) {
+    saveBtn.dataset.bound = '1';
+    saveBtn.addEventListener('click', () => {
+      const name = document.getElementById('rm-name').value.trim();
+      const cat = document.getElementById('rm-cat').value.trim();
+      const price = parseFloat(document.getElementById('rm-price').value);
+      const emoji = document.getElementById('rm-emoji').value.trim() || '🍽';
+      if (!name || !cat || isNaN(price)) { toast('Fill in all fields.'); return; }
+      if (rEditingMenuId) {
+        const idx = rState.menu.findIndex(i => i.id === rEditingMenuId);
+        rState.menu[idx] = { ...rState.menu[idx], name, category: cat, price, emoji };
+      } else {
+        rState.menu.push({ id: 'r' + (rState.nextMenuId++), name, category: cat, price, emoji, available: true });
+      }
+      saveRestaurantState();
+      document.getElementById('r-menu-modal').classList.remove('open');
+      renderRMenuManager(); renderRMenuGrid(); renderRMenuTabs();
+      toast('Saved.');
+    });
+  }
+
+  const cancelBtn = document.getElementById('r-cancel-menu-btn');
+  if (cancelBtn && !cancelBtn.dataset.bound) {
+    cancelBtn.dataset.bound = '1';
+    cancelBtn.addEventListener('click', () => document.getElementById('r-menu-modal').classList.remove('open'));
+  }
+
+  renderRestaurant();
+}
+
 function initApp() {
   renderProducts();
   renderCart();

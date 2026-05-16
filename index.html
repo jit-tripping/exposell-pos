@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EasyPOS — Point Of Sale</title>
+  <title>ExpoSell — Open Source Free POS</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
@@ -15,8 +15,8 @@
     <div class="auth-card">
       <div class="auth-brand">
         <span class="auth-icon">☕</span>
-        <div class="auth-brand-name">EasyPOS</div>
-        <div class="auth-brand-sub">Point Of Sale</div>
+        <div class="auth-brand-name">ExpoSell</div>
+        <div class="auth-brand-sub">Open Source Free POS</div>
       </div>
       <div class="auth-tabs">
         <button class="auth-tab active" id="tab-login">Log in</button>
@@ -45,14 +45,15 @@
       <div class="brand">
         <span class="brand-icon">☕</span>
         <div>
-          <div class="brand-name">EasyPOS</div>
-          <div class="brand-sub">Point Of Sale</div>
+          <div class="brand-name">ExpoSell</div>
+          <div class="brand-sub">Open Source Free POS</div>
         </div>
       </div>
       <ul class="nav-links">
         <li><button class="nav-btn active" data-page="pos"><span class="nav-icon">🛒</span> Sales</button></li>
         <li><button class="nav-btn" data-page="inventory"><span class="nav-icon">📦</span> Inventory</button></li>
         <li><button class="nav-btn" data-page="reports"><span class="nav-icon">📊</span> Reports</button></li>
+        <li><button class="nav-btn" data-page="restaurant"><span class="nav-icon">🍽</span> Restaurant</button></li>
         <li><button class="nav-btn" data-page="invoice"><span class="nav-icon">🧾</span> Invoices</button></li>
         <li><button class="nav-btn" data-page="admin"><span class="nav-icon">⚙️</span> Admin</button></li>
       </ul>
@@ -209,6 +210,21 @@
     </div>
   </div>
 
+
+  <!-- RESTAURANT MENU ITEM MODAL -->
+  <div class="modal-overlay" id="r-menu-modal">
+    <div class="modal">
+      <h2 id="r-menu-modal-title">Add Item</h2>
+      <div class="form-group"><label>Name</label><input type="text" id="rm-name" placeholder="e.g. Burger" /></div>
+      <div class="form-group"><label>Category</label><input type="text" id="rm-cat" placeholder="e.g. Mains" /></div>
+      <div class="form-group"><label>Price</label><input type="number" id="rm-price" placeholder="0.00" min="0" step="0.01" /></div>
+      <div class="form-group"><label>Emoji</label><input type="text" id="rm-emoji" placeholder="🍔" maxlength="2" /></div>
+      <div class="modal-actions">
+        <button class="btn-primary" id="r-save-menu-btn">Save</button>
+        <button class="btn-outline" id="r-cancel-menu-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
   <script src="app.js"></script>
 </body>
 </html>
