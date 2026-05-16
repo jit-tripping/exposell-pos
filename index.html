@@ -122,6 +122,75 @@
         </div>
       </section>
 
+      <!-- RESTAURANT PAGE -->
+      <section id="page-restaurant" class="page">
+        <div class="page-header"><h1>Restaurant</h1></div>
+        <div class="r-tabs">
+          <button class="r-tab active" data-rtab="order">Order</button>
+          <button class="r-tab" data-rtab="tables">Tables</button>
+          <button class="r-tab" data-rtab="kitchen">Kitchen</button>
+          <button class="r-tab" data-rtab="menu">Menu</button>
+        </div>
+
+        <!-- ORDER TAB -->
+        <div id="r-tab-order" class="r-tab-content active">
+          <div class="pos-layout">
+            <div class="product-panel">
+              <div id="r-category-tabs" class="r-category-tabs"></div>
+              <div class="product-grid" id="r-menu-grid"></div>
+            </div>
+            <div class="cart-panel">
+              <h2>Order</h2>
+              <div class="payment-methods" style="margin-bottom:12px">
+                <button class="r-order-type active pay-method" data-type="dine-in">🪑 Dine-in</button>
+                <button class="r-order-type pay-method" data-type="takeaway">🥡 Takeaway</button>
+              </div>
+              <div id="r-table-row" style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+                <label style="font-size:13px;color:var(--text2)">Table</label>
+                <select id="r-table-select" style="padding:6px 10px;border:1px solid var(--border2);border-radius:6px;font-size:14px;background:var(--bg);color:var(--text)"></select>
+              </div>
+              <div class="cart-items" id="r-cart-items">
+                <div class="cart-empty">No items.<br/>Tap the menu to add.</div>
+              </div>
+              <div class="cart-summary">
+                <div class="summary-row"><span>Subtotal</span><span id="r-subtotal">$0.00</span></div>
+                <div class="summary-row tax"><span>Tax</span><span id="r-tax">$0.00</span></div>
+                <div class="summary-row total"><span>Total</span><span id="r-total">$0.00</span></div>
+              </div>
+              <button class="btn-checkout" id="r-place-order-btn">Send to Kitchen</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- TABLES TAB -->
+        <div id="r-tab-tables" class="r-tab-content" style="display:none">
+          <div class="r-tables-grid" id="r-tables-grid"></div>
+        </div>
+
+        <!-- KITCHEN TAB -->
+        <div id="r-tab-kitchen" class="r-tab-content" style="display:none">
+          <div class="page-header" style="margin-bottom:16px">
+            <h2 style="font-size:18px;font-family:'Fraunces',serif">Kitchen Display</h2>
+            <button class="btn-outline" id="r-refresh-kitchen">Refresh</button>
+          </div>
+          <div class="kitchen-board" id="kitchen-board"></div>
+        </div>
+
+        <!-- MENU TAB -->
+        <div id="r-tab-menu" class="r-tab-content" style="display:none">
+          <div class="page-header" style="margin-bottom:16px">
+            <h2 style="font-size:18px;font-family:'Fraunces',serif">Menu Items</h2>
+            <button class="btn-primary" id="r-add-menu-btn">+ Add Item</button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Item</th><th>Category</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="r-menu-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <section id="page-invoice" class="page">
         <div class="page-header">
           <h1>Invoices</h1>
@@ -211,6 +280,7 @@
   </div>
 
 
+
   <!-- RESTAURANT MENU ITEM MODAL -->
   <div class="modal-overlay" id="r-menu-modal">
     <div class="modal">
@@ -225,6 +295,7 @@
       </div>
     </div>
   </div>
+
   <script src="app.js"></script>
 </body>
 </html>
