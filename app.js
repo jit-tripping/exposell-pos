@@ -1369,33 +1369,206 @@ function renderRCart() {
   }
 }
 
-// ── Place Order ───────────────────────────────────────────────────────────────
+// ── Payment Modal ─────────────────────────────────────────────────────────────
+let rPendingOrder = null;
+
+function openRPaymentModal() {
+  if (rCart.length === 0) { toast('Add items first.'); return; }
+  const subtotal = rCartTotal();
+  const tax = subtotal * (state.settings.taxRate / 100);
+  const grand = subtotal + tax;
+  rPendingOrder = {
+    id: rState.nextOrderId++,
+    type: rOrderType,
+    table: rOrderType === 'dine-in' ? rSelectedTable : null,
+    items: JSON.parse(JSON.stringify(rCart)),
+    subtotal, tax, total: grand,
+    status: 'pending',
+    time: now(), date: today(),
+    timestamp: new Date().toISOString(),
+    cashier: getSession() || 'unknown',
+    paymentMethod: 'cash',
+  };
+
+  // Build modal content
+  const modal = document.getElementById('r-payment-modal');
+  document.getElementById('rp-order-label').textContent =
+    rOrderType === 'dine-in' ? `Table ${rSelectedTable}` : 'Takeaway';
+  document.getElementById('rp-items-list').innerHTML = rCart.map(i =>
+    `<div class="receipt-row"><span>${i.emoji} ${i.name} ×${i.qty}</span><span>${rFmt(i.price * i.qty)}</span></div>`
+  ).join('');
+  document.getElementById('rp-subtotal').textContent = rFmt(subtotal);
+  document.getElementById('rp-tax').textContent = rFmt(tax);
+  document.getElementById('rp-total').textContent = rFmt(grand);
+  document.getElementById('rp-cash-received').value = '';
+  document.getElementById('rp-change').textContent = '';
+  document.getElementById('rp-error').textContent = '';
+
+  // reset payment method
+  document.querySelectorAll('.rp-method').forEach(b => b.classList.toggle('active', b.dataset.method === 'cash'));
+  document.getElementById('rp-cash-area').style.display = 'block';
+  rPendingOrder.paymentMethod = 'cash';
+
+  modal.classList.add('open');
+}
+
 function setupROrderBtn() {
   const btn = document.getElementById('r-place-order-btn');
   if (!btn || btn.dataset.bound) return;
   btn.dataset.bound = '1';
-  btn.addEventListener('click', () => {
-    if (rCart.length === 0) { toast('Add items first.'); return; }
-    const order = {
-      id: rState.nextOrderId++,
-      type: rOrderType,
-      table: rOrderType === 'dine-in' ? rSelectedTable : null,
-      items: JSON.parse(JSON.stringify(rCart)),
-      subtotal: rCartTotal(),
-      tax: rCartTotal() * (state.settings.taxRate / 100),
-      total: rCartTotal() * (1 + state.settings.taxRate / 100),
-      status: 'pending',
-      time: now(),
-      date: today(),
-    };
-    rState.orders.push(order);
+  btn.addEventListener('click', openRPaymentModal);
+}
+
+function initRPaymentModal() {
+  if (document.getElementById('r-payment-modal').dataset.bound) return;
+  document.getElementById('r-payment-modal').dataset.bound = '1';
+
+  // Payment method tabs
+  document.querySelectorAll('.rp-method').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.rp-method').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      rPendingOrder.paymentMethod = btn.dataset.method;
+      document.getElementById('rp-cash-area').style.display =
+        btn.dataset.method === 'cash' ? 'block' : 'none';
+      document.getElementById('rp-change').textContent = '';
+    });
+  });
+
+  // Cash change calc
+  document.getElementById('rp-cash-received').addEventListener('input', () => {
+    const received = parseFloat(document.getElementById('rp-cash-received').value) || 0;
+    const grand = rPendingOrder ? rPendingOrder.total : 0;
+    const chEl = document.getElementById('rp-change');
+    if (received >= grand && grand > 0) {
+      chEl.textContent = `Change: ${rFmt(received - grand)}`;
+      chEl.style.color = 'var(--green)';
+    } else if (received > 0) {
+      chEl.textContent = `Short: ${rFmt(grand - received)}`;
+      chEl.style.color = 'var(--red)';
+    } else {
+      chEl.textContent = '';
+    }
+  });
+
+  // Cancel
+  document.getElementById('rp-cancel-btn').addEventListener('click', () => {
+    document.getElementById('r-payment-modal').classList.remove('open');
+    rPendingOrder = null;
+  });
+
+  // Confirm payment + send to kitchen
+  document.getElementById('rp-confirm-btn').addEventListener('click', () => {
+    if (!rPendingOrder) return;
+    const errEl = document.getElementById('rp-error');
+    if (rPendingOrder.paymentMethod === 'cash') {
+      const received = parseFloat(document.getElementById('rp-cash-received').value) || 0;
+      if (received < rPendingOrder.total) { errEl.textContent = 'Not enough cash.'; return; }
+      rPendingOrder.cashReceived = received;
+      rPendingOrder.change = received - rPendingOrder.total;
+    }
+
+    // Save to restaurant orders
+    rState.orders.push({ ...rPendingOrder, paid: true });
     saveRestaurantState();
+
+    // Also record in global sales for reports
+    state.sales.push({
+      id: Date.now(),
+      items: rPendingOrder.items,
+      subtotal: rPendingOrder.subtotal,
+      tax: rPendingOrder.tax,
+      total: rPendingOrder.total,
+      paymentMethod: rPendingOrder.paymentMethod,
+      cashReceived: rPendingOrder.cashReceived || null,
+      time: rPendingOrder.time,
+      date: rPendingOrder.date,
+      timestamp: rPendingOrder.timestamp,
+      cashier: rPendingOrder.cashier,
+      source: 'restaurant',
+      tableOrType: rPendingOrder.type === 'dine-in' ? `Table ${rPendingOrder.table}` : 'Takeaway',
+    });
+    saveState();
+    updateSidebarTotal();
+
+    // Show receipt then close
+    showRReceipt(rPendingOrder);
+    document.getElementById('r-payment-modal').classList.remove('open');
+
+    // Clear cart
     rCart = [];
     renderRCart();
     renderKitchen();
     renderRTables();
-    toast(`Order #${order.id} sent to kitchen!`);
+    toast(`Order #${rPendingOrder.id} paid & sent to kitchen!`);
+    rPendingOrder = null;
   });
+
+  // Print receipt from restaurant
+  document.getElementById('rp-print-btn').addEventListener('click', () => {
+    const content = document.getElementById('r-receipt-content').innerHTML;
+    const win = window.open('', '_blank', 'width=380,height=680');
+    win.document.write(`<!DOCTYPE html><html><head><title>Receipt</title><style>
+      body{font-family:'Courier New',monospace;font-size:13px;padding:24px;max-width:320px;margin:0 auto}
+      .receipt-header{text-align:center;margin-bottom:10px}.r-biz{font-size:16px;font-weight:bold}
+      .receipt-divider{border:none;border-top:1px dashed #aaa;margin:8px 0}
+      .receipt-row,.receipt-total-row{display:flex;justify-content:space-between;margin:3px 0}
+      .receipt-total-row{font-weight:bold;font-size:15px}
+      .receipt-qr{text-align:center;margin:12px 0 8px}
+      .receipt-footer{text-align:center;color:#888;margin-top:8px;font-size:12px}
+    </style></head><body>${content}</body></html>`);
+    win.document.close(); win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 500);
+  });
+
+  document.getElementById('rp-new-order-btn').addEventListener('click', () => {
+    document.getElementById('r-receipt-modal').classList.remove('open');
+  });
+}
+
+function showRReceipt(order) {
+  const change = order.change != null ? order.change : null;
+  const receiptText = [
+    state.settings.bizName,
+    order.type === 'dine-in' ? `Table ${order.table}` : 'Takeaway',
+    `Order #${order.id}  ${order.time}`,
+    '----------------------------',
+    ...order.items.map(i => `${i.emoji} ${i.name} x${i.qty}   ${rFmt(i.price * i.qty)}`),
+    '----------------------------',
+    `Subtotal: ${rFmt(order.subtotal)}`,
+    `Tax: ${rFmt(order.tax)}`,
+    `TOTAL: ${rFmt(order.total)}`,
+    order.paymentMethod === 'cash' ? `Cash: ${rFmt(order.cashReceived)}  Change: ${rFmt(change)}` : `Paid by: ${order.paymentMethod}`,
+    '----------------------------',
+    'Thanks for dining with us!',
+  ].join('\n');
+
+  document.getElementById('r-receipt-content').innerHTML = `
+    <div class="receipt-header">
+      <div class="r-biz">${state.settings.bizName}</div>
+      <div style="font-size:12px;color:#888">${order.type === 'dine-in' ? `Table ${order.table}` : 'Takeaway'} · Order #${order.id}</div>
+      <div style="font-size:11px;color:#aaa">${order.date} · ${order.time}</div>
+    </div>
+    <hr class="receipt-divider"/>
+    ${order.items.map(i => `<div class="receipt-row"><span>${i.emoji} ${i.name} ×${i.qty}</span><span>${rFmt(i.price*i.qty)}</span></div>`).join('')}
+    <hr class="receipt-divider"/>
+    <div class="receipt-row"><span>Subtotal</span><span>${rFmt(order.subtotal)}</span></div>
+    <div class="receipt-row"><span>Tax (${state.settings.taxRate}%)</span><span>${rFmt(order.tax)}</span></div>
+    <hr class="receipt-divider"/>
+    <div class="receipt-total-row"><span>Total</span><span>${rFmt(order.total)}</span></div>
+    ${order.paymentMethod === 'cash'
+      ? `<hr class="receipt-divider"/>
+         <div class="receipt-row"><span>Cash</span><span>${rFmt(order.cashReceived)}</span></div>
+         <div class="receipt-row"><span>Change</span><span>${rFmt(change)}</span></div>`
+      : `<div class="receipt-row" style="margin-top:6px"><span>Paid by</span><span>${order.paymentMethod}</span></div>`}
+    <hr class="receipt-divider"/>
+    <div class="receipt-qr">
+      <div style="font-size:11px;color:#999;margin-bottom:6px">Scan for receipt</div>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(receiptText)}" width="110" height="110" alt="QR"/>
+    </div>
+    <div class="receipt-footer">Thanks for dining with us! 🍽</div>
+  `;
+  document.getElementById('r-receipt-modal').classList.add('open');
 }
 
 // ── Tables View ───────────────────────────────────────────────────────────────
@@ -1557,6 +1730,7 @@ function initRestaurant() {
   }
 
   setupROrderBtn();
+  initRPaymentModal();
 
   // Add menu item button
   const addBtn = document.getElementById('r-add-menu-btn');
