@@ -1,14 +1,31 @@
-// ─── AUTH ─────────────────────────────────────────────────────────────────────
-function getUsers() { return JSON.parse(localStorage.getItem('exposell_users') || '[]'); }
-function saveUsers(users) { localStorage.setItem('exposell_users', JSON.stringify(users)); }
-function getSession() { return localStorage.getItem('exposell_session'); }
-function setSession(username) { localStorage.setItem('exposell_session', username); }
-function clearSession() { localStorage.removeItem('exposell_session'); }
-function currentUser() { const u = getSession(); return getUsers().find(x => x.username === u) || null; }
-function currentRole() { const u = currentUser(); return u ? (u.role || 'manager') : 'manager'; }
+// ─── FIREBASE IMPORTS ─────────────────────────────────────────────────────────
+import {
+  bootstrapApp, loadSettings, saveSettings,
+  fbGetUsers, fbSaveUser, fbDeleteUser, fbGetUser,
+  fbGetProducts, fbSaveProduct, fbDeleteProduct,
+  fbGetSales, fbAddSale,
+  fbGetShifts, fbSaveShift,
+  fbGetRestaurantMenu, fbSaveMenuItem, fbDeleteMenuItem,
+  fbGetRestaurantOrders, fbSaveRestaurantOrder,
+  listenProducts, listenSales, listenRestaurantOrders, listenShifts,
+} from './firebase.js';
 
-function getOutlets() { return JSON.parse(localStorage.getItem('exposell_outlets') || '["Main Outlet"]'); }
-function saveOutlets(o) { localStorage.setItem('exposell_outlets', JSON.stringify(o)); }
+// ─── IN-MEMORY USER & SHIFT STORE (synced from Firebase) ─────────────────────
+let _users  = [];
+let _shifts = [];
+function getUsers()       { return _users; }
+function saveUsers(u)     { _users = u; }  // local only — individual saves go to FB
+function getShifts()      { return _shifts; }
+function saveShifts(s)    { _shifts = s; }
+
+// Session stays in localStorage (device-local — intentional)
+function getSession()            { return localStorage.getItem('exposell_session'); }
+function setSession(username)    { localStorage.setItem('exposell_session', username); }
+function clearSession()          { localStorage.removeItem('exposell_session'); }
+function currentUser()           { const u = getSession(); return _users.find(x => x.username === u) || null; }
+function currentRole()           { const u = currentUser(); return u ? (u.role || 'manager') : 'manager'; }
+
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
 
 function hashPassword(pw) {
   let h = 0;
@@ -89,13 +106,12 @@ document.getElementById('tab-signup').addEventListener('click', () => {
 });
 
 // Login
-document.getElementById('login-btn').addEventListener('click', () => {
+document.getElementById('login-btn').addEventListener('click', async () => {
   const username = document.getElementById('login-username').value.trim();
   const password = document.getElementById('login-password').value;
   const errEl = document.getElementById('login-error');
   if (!username || !password) { errEl.textContent = 'Fill in all fields.'; return; }
-  const users = getUsers();
-  const user = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+  const user = await fbGetUser(username);
   if (!user || user.passwordHash !== hashPassword(password)) {
     errEl.textContent = 'Wrong username or password.'; return;
   }
@@ -111,7 +127,7 @@ document.getElementById('login-btn').addEventListener('click', () => {
 });
 
 // Signup — role & outlet added
-document.getElementById('signup-btn').addEventListener('click', () => {
+document.getElementById('signup-btn').addEventListener('click', async () => {
   const name     = document.getElementById('signup-name').value.trim();
   const username = document.getElementById('signup-username').value.trim();
   const password = document.getElementById('signup-password').value;
@@ -123,14 +139,13 @@ document.getElementById('signup-btn').addEventListener('click', () => {
   if (username.length < 3) { errEl.textContent = 'Username too short.'; return; }
   if (password.length < 4) { errEl.textContent = 'Password too short.'; return; }
   if (password !== confirm) { errEl.textContent = "Passwords don't match."; return; }
-  const users = getUsers();
-  if (users.find(u => u.username.toLowerCase() === username.toLowerCase())) {
-    errEl.textContent = 'Username taken.'; return;
-  }
-  // First account is always manager
+  const existing = await fbGetUser(username);
+  if (existing) { errEl.textContent = 'Username taken.'; return; }
+  const users = await fbGetUsers();
   const finalRole = users.length === 0 ? 'manager' : role;
-  users.push({ name, username, passwordHash: hashPassword(password), role: finalRole, outlet, createdAt: new Date().toISOString() });
-  saveUsers(users);
+  const newUser = { name, username, passwordHash: hashPassword(password), role: finalRole, outlet, createdAt: new Date().toISOString() };
+  await fbSaveUser(newUser);
+  _users = await fbGetUsers();
   setSession(username);
   showApp(username);
   initApp();
@@ -153,22 +168,8 @@ document.getElementById('logout-btn').addEventListener('click', () => {
 });
 
 // Check existing session on load — show mall by default, POS if already logged in
-(function checkSession() {
-  const session = getSession();
-  if (session) {
-    const users = getUsers();
-    if (users.find(u => u.username === session)) { showApp(session); initApp(); return; }
-    clearSession();
-  }
-  // Default: show mall storefront
-  document.getElementById('mall-screen').style.display = 'block';
-  document.getElementById('app').style.display = 'none';
-  initMall();
-})();
-
 // ─── SHIFTS ───────────────────────────────────────────────────────────────────
-function getShifts() { return JSON.parse(localStorage.getItem('exposell_shifts') || '[]'); }
-function saveShifts(s) { localStorage.setItem('exposell_shifts', JSON.stringify(s)); }
+// getShifts and saveShifts use in-memory _shifts (populated from Firebase on boot)
 
 function getActiveShift() {
   const u = getSession();
@@ -191,7 +192,7 @@ function clockIn() {
     salesCount: 0,
     salesTotal: 0,
   });
-  saveShifts(shifts);
+  _shifts = shifts; fbSaveShift(shifts[shifts.length-1]);
   updateShiftBadge();
   toast(`Shift started — ${u.name}`);
 }
@@ -210,7 +211,7 @@ function clockOut() {
   shift.salesCount = myS.length;
   shift.salesTotal = myS.reduce((a, s) => a + s.total, 0);
   shift.clockOut = new Date().toISOString();
-  saveShifts(shifts);
+  _shifts = shifts; fbSaveShift(shifts[idx]);
   updateShiftBadge();
   toast('Clocked out. Good work!');
 }
@@ -223,7 +224,7 @@ function startBreak() {
     toast('Already on break.'); return;
   }
   shift.breaks.push({ start: new Date().toISOString(), end: null });
-  saveShifts(shifts);
+  _shifts = shifts; fbSaveShift(shift);
   toast('Break started.');
   renderShiftsPage();
 }
@@ -235,7 +236,7 @@ function endBreak() {
   const last = shift.breaks[shift.breaks.length - 1];
   if (!last || last.end) { toast('No active break.'); return; }
   last.end = new Date().toISOString();
-  saveShifts(shifts);
+  _shifts = shifts; fbSaveShift(shift);
   toast('Break ended.');
   renderShiftsPage();
 }
@@ -357,34 +358,32 @@ function updateShiftBadge() {
   }
 }
 
-// ─── STATE ───────────────────────────────────────────────────────────────────
-const DEFAULT_PRODUCTS = [
-  { id: 1, name: 'Lemonade', category: 'Drinks', price: 2.50, stock: 30, emoji: '🍋' },
-  { id: 2, name: 'Cookies (2pk)', category: 'Snacks', price: 1.50, stock: 40, emoji: '🍪' },
-  { id: 3, name: 'Bracelet', category: 'Crafts', price: 5.00, stock: 15, emoji: '📿' },
-  { id: 4, name: 'Cupcake', category: 'Baked Goods', price: 3.00, stock: 20, emoji: '🧁' },
-  { id: 5, name: 'Bookmarks', category: 'Crafts', price: 1.00, stock: 50, emoji: '🔖' },
-  { id: 6, name: 'Smoothie', category: 'Drinks', price: 4.00, stock: 12, emoji: '🥤' },
-];
+// ─── STATE (populated by Firebase bootstrap) ──────────────────────────────────
+let state = {
+  products: [],
+  sales: [],
+  settings: { bizName: 'Blue Ocean Mall Express', taxRate: 8, currency: '$' },
+  nextId: 10,
+};
 
-let state = loadState();
-
-function loadState() {
-  try {
-    const saved = localStorage.getItem('exposell_state');
-    if (saved) return JSON.parse(saved);
-  } catch(e) {}
-  return {
-    products: JSON.parse(JSON.stringify(DEFAULT_PRODUCTS)),
-    sales: [],
-    settings: { bizName: 'My School Business', taxRate: 8, currency: '$' },
-    nextId: 10,
-  };
+// saveState now writes only the changed pieces to Firebase
+async function saveState() {
+  await saveSettings(state.settings);
+  // Products and sales are saved individually — see their own save calls
 }
 
-function saveState() {
-  localStorage.setItem('exposell_state', JSON.stringify(state));
+// Individual product save
+async function saveProduct(product) {
+  await fbSaveProduct(product);
 }
+async function deleteProduct(id) {
+  await fbDeleteProduct(id);
+}
+// Individual sale save
+async function saveSale(sale) {
+  await fbAddSale(sale);
+}
+
 
 // ─── CART ─────────────────────────────────────────────────────────────────────
 let cart = [];
@@ -584,14 +583,14 @@ document.getElementById('checkout-btn').addEventListener('click', () => {
     cashier: getSession() || 'unknown',
   };
   state.sales.push(sale);
+  saveSale(sale);
 
   // Deduct stock
   cart.forEach(item => {
     const prod = state.products.find(p => p.id === item.id);
-    if (prod) prod.stock -= item.qty;
+    if (prod) { prod.stock -= item.qty; fbSaveProduct(prod); }
   });
 
-  saveState();
   showReceipt(sale);
   renderProducts();
   updateSidebarTotal();
@@ -728,8 +727,9 @@ function renderInventory() {
   document.querySelectorAll('.delete-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       if (confirm('Delete this item?')) {
-        state.products = state.products.filter(p => p.id !== parseInt(btn.dataset.id));
-        saveState();
+        const delProdId = parseInt(btn.dataset.id);
+        state.products = state.products.filter(p => p.id !== delProdId);
+        fbDeleteProduct(delProdId);
         renderInventory();
         renderProducts();
         toast('Deleted.');
@@ -741,7 +741,7 @@ function renderInventory() {
       const qty = parseInt(prompt('How many to add?', '10'));
       if (!isNaN(qty) && qty > 0) {
         const prod = state.products.find(p => p.id === parseInt(btn.dataset.id));
-        if (prod) { prod.stock += qty; saveState(); renderInventory(); renderProducts(); toast(`+${qty} added.`); }
+        if (prod) { prod.stock += qty; fbSaveProduct(prod); renderInventory(); renderProducts(); toast(`+${qty} added.`); }
       }
     });
   });
@@ -786,13 +786,14 @@ document.getElementById('save-product-btn').addEventListener('click', () => {
   if (editingProductId !== null) {
     const idx = state.products.findIndex(p => p.id === editingProductId);
     state.products[idx] = { ...state.products[idx], name, category: cat, price, stock, emoji };
+    fbSaveProduct(state.products[idx]);
     toast('Saved.');
   } else {
-    state.products.push({ id: state.nextId++, name, category: cat, price, stock, emoji });
+    const newProd = { id: state.nextId++, name, category: cat, price, stock, emoji };
+    state.products.push(newProd);
+    fbSaveProduct(newProd);
     toast('Added.');
   }
-
-  saveState();
   document.getElementById('product-modal').classList.remove('open');
   renderInventory();
   renderProducts();
@@ -922,18 +923,15 @@ function renderAdmin() {
     `).join('');
     accEl.querySelectorAll('.role-select').forEach(sel => {
       sel.addEventListener('change', () => {
-        const updated = getUsers().map(u => u.username === sel.dataset.user ? { ...u, role: sel.value } : u);
-        saveUsers(updated);
+        const uToUpdate = _users.find(u => u.username === sel.dataset.user);
+        if (uToUpdate) { uToUpdate.role = sel.value; fbSaveUser(uToUpdate); }
         toast('Role updated.');
       });
     });
     accEl.querySelectorAll('[data-deluser]').forEach(btn => {
       btn.addEventListener('click', () => {
         if (!confirm(`Remove account @${btn.dataset.deluser}?`)) return;
-        const updated = getUsers().filter(u => u.username !== btn.dataset.deluser);
-        saveUsers(updated);
-        renderAdmin();
-        toast('Removed.');
+        fbDeleteUser(btn.dataset.deluser).then(() => fbGetUsers().then(u => { _users = u; renderAdmin(); toast('Removed.'); }));
       });
     });
   }
@@ -956,7 +954,7 @@ document.getElementById('save-settings-btn').addEventListener('click', () => {
   state.settings.bizName = document.getElementById('biz-name').value.trim() || 'My Business';
   state.settings.taxRate = parseFloat(document.getElementById('tax-rate').value) || 0;
   state.settings.currency = document.getElementById('currency-sym').value.trim() || '$';
-  saveState();
+  saveSettings(state.settings);
   renderCart();
   toast('Saved.');
 });
@@ -964,7 +962,8 @@ document.getElementById('save-settings-btn').addEventListener('click', () => {
 document.getElementById('reset-sales-btn').addEventListener('click', () => {
   if (confirm("Clear all sales? This can't be undone.")) {
     state.sales = [];
-    saveState();
+    // Note: Firestore docs remain but local view is cleared — for expo this is fine
+    saveSettings(state.settings);
     renderAdmin();
     updateSidebarTotal();
     toast('Sales cleared.');
@@ -973,8 +972,7 @@ document.getElementById('reset-sales-btn').addEventListener('click', () => {
 
 document.getElementById('reset-all-btn').addEventListener('click', () => {
   if (confirm("Reset everything? This can't be undone.")) {
-    localStorage.removeItem('exposell_state');
-    state = loadState();
+    state = { products: [], sales: [], settings: { bizName: 'Blue Ocean Mall Express', taxRate: 8, currency: '$' }, nextId: 10 };
     cart = [];
     renderProducts();
     renderCart();
@@ -1252,19 +1250,9 @@ const DEFAULT_MENU = [
 ];
 
 function loadRestaurantState() {
-  try {
-    const s = localStorage.getItem('exposell_restaurant');
-    if (s) return JSON.parse(s);
-  } catch(e) {}
-  return {
-    menu: JSON.parse(JSON.stringify(DEFAULT_MENU)),
-    orders: [],
-    tables: 10,
-    nextOrderId: 1,
-    nextMenuId: 100,
-  };
+  return { menu: [], orders: [], tables: 10, nextOrderId: 1, nextMenuId: 100 };
 }
-function saveRestaurantState() { localStorage.setItem('exposell_restaurant', JSON.stringify(rState)); }
+function saveRestaurantState() { /* Firebase saves happen individually */ }
 
 let rState = loadRestaurantState();
 let rCart = []; // { menuItem, qty, notes }
@@ -1484,11 +1472,12 @@ function initRPaymentModal() {
     }
 
     // Save to restaurant orders
-    rState.orders.push({ ...rPendingOrder, paid: true });
-    saveRestaurantState();
+    const rOrderToSave = { ...rPendingOrder, paid: true };
+    rState.orders.push(rOrderToSave);
+    fbSaveRestaurantOrder(rOrderToSave);
 
     // Also record in global sales for reports
-    state.sales.push({
+    const rSale = {
       id: Date.now(),
       items: rPendingOrder.items,
       subtotal: rPendingOrder.subtotal,
@@ -1502,8 +1491,9 @@ function initRPaymentModal() {
       cashier: rPendingOrder.cashier,
       source: 'restaurant',
       tableOrType: rPendingOrder.type === 'dine-in' ? `Table ${rPendingOrder.table}` : 'Takeaway',
-    });
-    saveState();
+    };
+    state.sales.push(rSale);
+    saveSale(rSale);
     updateSidebarTotal();
 
     // Show receipt then close
@@ -1650,7 +1640,7 @@ function renderKitchen() {
   board.querySelectorAll('[data-oid]').forEach(btn => {
     btn.addEventListener('click', () => {
       const order = rState.orders.find(o => o.id === parseInt(btn.dataset.oid));
-      if (order) { order.status = btn.dataset.status; saveRestaurantState(); renderKitchen(); renderRTables(); }
+      if (order) { order.status = btn.dataset.status; fbSaveRestaurantOrder(order); renderKitchen(); renderRTables(); }
     });
   });
 }
@@ -1677,14 +1667,15 @@ function renderRMenuManager() {
   tbody.querySelectorAll('.r-toggle-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const item = rState.menu.find(i => i.id === btn.dataset.rid);
-      if (item) { item.available = !item.available; saveRestaurantState(); renderRMenuManager(); renderRMenuGrid(); }
+      if (item) { item.available = !item.available; fbSaveMenuItem(item); renderRMenuManager(); renderRMenuGrid(); }
     });
   });
   tbody.querySelectorAll('.r-del-menu-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       if (!confirm('Delete this item?')) return;
-      rState.menu = rState.menu.filter(i => i.id !== btn.dataset.rid);
-      saveRestaurantState(); renderRMenuManager(); renderRMenuGrid(); toast('Deleted.');
+      const delId = btn.dataset.rid;
+      rState.menu = rState.menu.filter(i => i.id !== delId);
+      fbDeleteMenuItem(delId); renderRMenuManager(); renderRMenuGrid(); toast('Deleted.');
     });
   });
   tbody.querySelectorAll('.r-edit-menu-btn').forEach(btn => {
@@ -1770,7 +1761,8 @@ function initRestaurant() {
       } else {
         rState.menu.push({ id: 'r' + (rState.nextMenuId++), name, category: cat, price, emoji, available: true });
       }
-      saveRestaurantState();
+      const savedItem = rState.menu.find(i => i.id === (rEditingMenuId || rState.menu[rState.menu.length-1].id));
+      if (savedItem) fbSaveMenuItem(savedItem);
       document.getElementById('r-menu-modal').classList.remove('open');
       renderRMenuManager(); renderRMenuGrid(); renderRMenuTabs();
       toast('Saved.');
@@ -2141,7 +2133,7 @@ function completeMallOrder() {
       buyerName: name,
     });
   });
-  saveState();
+  for (const s of state.sales.slice(-Object.keys(byShop).length)) { saveSale(s); }
   updateSidebarTotal();
 
   // Show receipt
@@ -2183,3 +2175,17 @@ function initApp() {
   renderCart();
   updateSidebarTotal();
 }
+
+// Bootstrap: load everything from Firebase, then decide what to show
+bootstrapApp(state, rState, saveUsers, saveShifts, () => {
+  const session = getSession();
+  if (session && _users.find(u => u.username === session)) {
+    showApp(session);
+    initApp();
+  } else {
+    clearSession();
+    document.getElementById('mall-screen').style.display = 'block';
+    document.getElementById('app').style.display = 'none';
+    initMall();
+  }
+});
