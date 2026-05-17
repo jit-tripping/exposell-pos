@@ -4,20 +4,56 @@ function saveUsers(users) { localStorage.setItem('exposell_users', JSON.stringif
 function getSession() { return localStorage.getItem('exposell_session'); }
 function setSession(username) { localStorage.setItem('exposell_session', username); }
 function clearSession() { localStorage.removeItem('exposell_session'); }
+function currentUser() { const u = getSession(); return getUsers().find(x => x.username === u) || null; }
+function currentRole() { const u = currentUser(); return u ? (u.role || 'manager') : 'manager'; }
+
+function getOutlets() { return JSON.parse(localStorage.getItem('exposell_outlets') || '["Main Outlet"]'); }
+function saveOutlets(o) { localStorage.setItem('exposell_outlets', JSON.stringify(o)); }
 
 function hashPassword(pw) {
-  // Simple deterministic hash for local storage (not cryptographic, fine for local-only app)
   let h = 0;
   for (let i = 0; i < pw.length; i++) { h = (Math.imul(31, h) + pw.charCodeAt(i)) | 0; }
   return h.toString(36);
 }
 
+// Role-based nav visibility
+const ROLE_NAV = {
+  manager:  ['pos','inventory','reports','restaurant','invoice','admin','shifts'],
+  cashier:  ['pos','restaurant','shifts'],
+  kitchen:  ['restaurant','shifts'],
+};
+
+function applyRoleNav(role) {
+  const allowed = ROLE_NAV[role] || ROLE_NAV.manager;
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    const page = btn.dataset.page;
+    btn.style.display = allowed.includes(page) ? 'flex' : 'none';
+  });
+  // If current active page not allowed, redirect
+  const activePage = document.querySelector('.nav-btn.active')?.dataset?.page;
+  if (activePage && !allowed.includes(activePage)) {
+    const first = allowed[0];
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const firstBtn = document.querySelector(`[data-page="${first}"]`);
+    if (firstBtn) firstBtn.classList.add('active');
+    const firstPage = document.getElementById('page-' + first);
+    if (firstPage) firstPage.classList.add('active');
+  }
+}
+
 function showApp(username) {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
-  const users = getUsers();
-  const user = users.find(u => u.username === username);
-  document.getElementById('logged-in-user').textContent = `👤 ${user ? user.name || user.username : username}`;
+  const user = getUsers().find(u => u.username === username);
+  const role = user ? (user.role || 'manager') : 'manager';
+  const outlet = user ? (user.outlet || 'Main Outlet') : '';
+  const roleLabel = { manager: '🔑', cashier: '🧾', kitchen: '👨‍🍳' }[role] || '👤';
+  document.getElementById('logged-in-user').innerHTML =
+    `${roleLabel} <strong>${user ? user.name : username}</strong><br/>
+     <span style="font-size:11px;opacity:0.6">${role} · ${outlet}</span>`;
+  applyRoleNav(role);
+  updateShiftBadge();
 }
 
 function showAuth() {
@@ -57,20 +93,21 @@ document.getElementById('login-btn').addEventListener('click', () => {
   initApp();
 });
 
-// Enter key on login
 ['login-username','login-password'].forEach(id => {
   document.getElementById(id).addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('login-btn').click();
   });
 });
 
-// Signup
+// Signup — role & outlet added
 document.getElementById('signup-btn').addEventListener('click', () => {
-  const name = document.getElementById('signup-name').value.trim();
+  const name     = document.getElementById('signup-name').value.trim();
   const username = document.getElementById('signup-username').value.trim();
   const password = document.getElementById('signup-password').value;
-  const confirm = document.getElementById('signup-confirm').value;
-  const errEl = document.getElementById('signup-error');
+  const confirm  = document.getElementById('signup-confirm').value;
+  const role     = document.getElementById('signup-role').value;
+  const outlet   = document.getElementById('signup-outlet').value.trim() || 'Main Outlet';
+  const errEl    = document.getElementById('signup-error');
   if (!name || !username || !password || !confirm) { errEl.textContent = 'Fill in all fields.'; return; }
   if (username.length < 3) { errEl.textContent = 'Username too short.'; return; }
   if (password.length < 4) { errEl.textContent = 'Password too short.'; return; }
@@ -79,18 +116,24 @@ document.getElementById('signup-btn').addEventListener('click', () => {
   if (users.find(u => u.username.toLowerCase() === username.toLowerCase())) {
     errEl.textContent = 'Username taken.'; return;
   }
-  users.push({ name, username, passwordHash: hashPassword(password), createdAt: new Date().toISOString() });
+  // First account is always manager
+  const finalRole = users.length === 0 ? 'manager' : role;
+  users.push({ name, username, passwordHash: hashPassword(password), role: finalRole, outlet, createdAt: new Date().toISOString() });
   saveUsers(users);
   setSession(username);
   showApp(username);
   initApp();
 });
 
-// Logout
+// Logout — also clock out if on shift
 document.getElementById('logout-btn').addEventListener('click', () => {
+  const active = getActiveShift();
+  if (active) {
+    if (!confirm('You have an active shift. Clock out and log out?')) return;
+    clockOut();
+  }
   clearSession();
   showAuth();
-  // Reset nav to POS
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.querySelector('[data-page="pos"]').classList.add('active');
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -102,14 +145,202 @@ document.getElementById('logout-btn').addEventListener('click', () => {
   const session = getSession();
   if (session) {
     const users = getUsers();
-    if (users.find(u => u.username === session)) {
-      showApp(session);
-      return;
-    }
+    if (users.find(u => u.username === session)) { showApp(session); return; }
     clearSession();
   }
   showAuth();
 })();
+
+// ─── SHIFTS ───────────────────────────────────────────────────────────────────
+function getShifts() { return JSON.parse(localStorage.getItem('exposell_shifts') || '[]'); }
+function saveShifts(s) { localStorage.setItem('exposell_shifts', JSON.stringify(s)); }
+
+function getActiveShift() {
+  const u = getSession();
+  return getShifts().find(s => s.username === u && !s.clockOut) || null;
+}
+
+function clockIn() {
+  const u = currentUser();
+  if (!u) return;
+  const shifts = getShifts();
+  shifts.push({
+    id: Date.now(),
+    username: u.username,
+    name: u.name,
+    role: u.role || 'manager',
+    outlet: u.outlet || 'Main Outlet',
+    clockIn: new Date().toISOString(),
+    clockOut: null,
+    breaks: [],
+    salesCount: 0,
+    salesTotal: 0,
+  });
+  saveShifts(shifts);
+  updateShiftBadge();
+  toast(`Shift started — ${u.name}`);
+}
+
+function clockOut() {
+  const shifts = getShifts();
+  const idx = shifts.findIndex(s => s.username === getSession() && !s.clockOut);
+  if (idx === -1) return;
+  // tally sales made during shift
+  const shift = shifts[idx];
+  const shiftStart = new Date(shift.clockIn);
+  const myS = state.sales.filter(s => {
+    const st = new Date(s.timestamp || 0);
+    return s.cashier === shift.username && st >= shiftStart;
+  });
+  shift.salesCount = myS.length;
+  shift.salesTotal = myS.reduce((a, s) => a + s.total, 0);
+  shift.clockOut = new Date().toISOString();
+  saveShifts(shifts);
+  updateShiftBadge();
+  toast('Clocked out. Good work!');
+}
+
+function startBreak() {
+  const shifts = getShifts();
+  const shift = shifts.find(s => s.username === getSession() && !s.clockOut);
+  if (!shift) return;
+  if (shift.breaks.length && !shift.breaks[shift.breaks.length - 1].end) {
+    toast('Already on break.'); return;
+  }
+  shift.breaks.push({ start: new Date().toISOString(), end: null });
+  saveShifts(shifts);
+  toast('Break started.');
+  renderShiftsPage();
+}
+
+function endBreak() {
+  const shifts = getShifts();
+  const shift = shifts.find(s => s.username === getSession() && !s.clockOut);
+  if (!shift) return;
+  const last = shift.breaks[shift.breaks.length - 1];
+  if (!last || last.end) { toast('No active break.'); return; }
+  last.end = new Date().toISOString();
+  saveShifts(shifts);
+  toast('Break ended.');
+  renderShiftsPage();
+}
+
+function shiftDuration(s) {
+  const start = new Date(s.clockIn);
+  const end   = s.clockOut ? new Date(s.clockOut) : new Date();
+  const ms    = end - start;
+  const breakMs = (s.breaks || []).reduce((a, b) => {
+    if (!b.start) return a;
+    const bs = new Date(b.start);
+    const be = b.end ? new Date(b.end) : new Date();
+    return a + (be - bs);
+  }, 0);
+  const worked = ms - breakMs;
+  const h = Math.floor(worked / 3600000);
+  const m = Math.floor((worked % 3600000) / 60000);
+  return `${h}h ${m}m`;
+}
+
+function updateShiftBadge() {
+  const active = getActiveShift();
+  const btn = document.querySelector('[data-page="shifts"]');
+  if (!btn) return;
+  btn.innerHTML = `<span class="nav-icon">⏱</span> Shifts${active ? ' <span class="shift-dot"></span>' : ''}`;
+}
+
+function renderShiftsPage() {
+  const active = getActiveShift();
+  const el = document.getElementById('shifts-clock-area');
+  if (!el) return;
+
+  if (active) {
+    const onBreak = active.breaks.length && !active.breaks[active.breaks.length - 1].end;
+    el.innerHTML = `
+      <div class="shift-active-card">
+        <div class="shift-active-header">
+          <div>
+            <div class="shift-active-name">${active.name}</div>
+            <div class="shift-active-meta">${active.role} · ${active.outlet}</div>
+          </div>
+          <div class="shift-live-badge ${onBreak ? 'on-break' : 'on-shift'}">${onBreak ? '☕ On Break' : '🟢 On Shift'}</div>
+        </div>
+        <div class="shift-active-stats">
+          <div class="shift-stat"><div class="shift-stat-val" id="shift-timer">–</div><div class="shift-stat-label">Time worked</div></div>
+          <div class="shift-stat"><div class="shift-stat-val">${active.breaks.length}</div><div class="shift-stat-label">Breaks</div></div>
+          <div class="shift-stat"><div class="shift-stat-val">${fmt(active.salesTotal || 0)}</div><div class="shift-stat-label">Sales</div></div>
+        </div>
+        <div class="shift-clock-btns">
+          ${!onBreak ? `<button class="btn-outline" id="break-start-btn">☕ Start Break</button>` : `<button class="btn-outline" id="break-end-btn">▶ End Break</button>`}
+          <button class="btn-auth" id="clock-out-btn" style="background:var(--red)">Clock Out</button>
+        </div>
+        <div style="font-size:12px;color:var(--text3);margin-top:8px">Clocked in at ${new Date(active.clockIn).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
+      </div>`;
+    // Live timer
+    const timerEl = document.getElementById('shift-timer');
+    if (timerEl) {
+      clearInterval(window._shiftTimer);
+      window._shiftTimer = setInterval(() => {
+        if (timerEl && document.contains(timerEl)) timerEl.textContent = shiftDuration(active);
+        else clearInterval(window._shiftTimer);
+      }, 10000);
+      timerEl.textContent = shiftDuration(active);
+    }
+    document.getElementById('break-start-btn')?.addEventListener('click', startBreak);
+    document.getElementById('break-end-btn')?.addEventListener('click', endBreak);
+    document.getElementById('clock-out-btn')?.addEventListener('click', () => {
+      if (confirm('Clock out now?')) { clockOut(); renderShiftsPage(); }
+    });
+  } else {
+    el.innerHTML = `
+      <div class="shift-clocked-out">
+        <div style="font-size:48px;margin-bottom:12px">⏱</div>
+        <div style="font-size:18px;font-weight:600;margin-bottom:6px">Not clocked in</div>
+        <div style="font-size:14px;color:var(--text3);margin-bottom:20px">Start a shift to track your time and sales.</div>
+        <button class="btn-auth" id="clock-in-btn">Clock In</button>
+      </div>`;
+    document.getElementById('clock-in-btn')?.addEventListener('click', () => { clockIn(); renderShiftsPage(); });
+  }
+
+  // Shift history
+  const allShifts = getShifts().filter(s => {
+    const role = currentRole();
+    return role === 'manager' ? true : s.username === getSession();
+  }).slice().reverse();
+
+  const histEl = document.getElementById('shifts-history');
+  if (!histEl) return;
+  if (allShifts.length === 0) {
+    histEl.innerHTML = '<div style="color:var(--text3);font-size:14px;padding:12px 0">No shifts yet.</div>';
+    return;
+  }
+  histEl.innerHTML = allShifts.map(s => {
+    const start = new Date(s.clockIn);
+    const end   = s.clockOut ? new Date(s.clockOut) : null;
+    const roleLabel = {manager:'🔑',cashier:'🧾',kitchen:'👨‍🍳'}[s.role] || '👤';
+    return `
+    <div class="shift-history-row">
+      <div class="shift-h-left">
+        <div class="shift-h-name">${roleLabel} ${s.name} <span class="shift-h-outlet">${s.outlet}</span></div>
+        <div class="shift-h-time">${start.toLocaleDateString()} · ${start.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} → ${end ? end.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '<span style="color:var(--green)">Active</span>'}</div>
+      </div>
+      <div class="shift-h-right">
+        <div class="shift-h-dur">${shiftDuration(s)}</div>
+        <div class="shift-h-sales">${fmt(s.salesTotal || 0)} · ${s.salesCount || 0} sales</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateShiftBadge() {
+  const active = getActiveShift();
+  const btn = document.querySelector('[data-page="shifts"]');
+  if (!btn) return;
+  if (active) {
+    btn.innerHTML = `<span class="nav-icon">⏱</span> Shifts <span class="shift-dot"></span>`;
+  } else {
+    btn.innerHTML = `<span class="nav-icon">⏱</span> Shifts`;
+  }
+}
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
 const DEFAULT_PRODUCTS = [
@@ -187,6 +418,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     if (page === 'admin') renderAdmin();
     if (page === 'invoice') renderInvoicePage();
     if (page === 'restaurant') initRestaurant();
+    if (page === 'shifts') renderShiftsPage();
   });
 });
 
@@ -333,6 +565,8 @@ document.getElementById('checkout-btn').addEventListener('click', () => {
     cashReceived: paymentMethod === 'cash' ? parseFloat(document.getElementById('cash-received').value) : null,
     time: now(),
     date: today(),
+    timestamp: new Date().toISOString(),
+    cashier: getSession() || 'unknown',
   };
   state.sales.push(sale);
 
@@ -649,18 +883,35 @@ function renderAdmin() {
   // Accounts list
   const users = getUsers();
   const accEl = document.getElementById('accounts-list');
+  const roleLabel = { manager:'🔑 Manager', cashier:'🧾 Cashier', kitchen:'👨‍🍳 Kitchen' };
   if (users.length === 0) {
     accEl.innerHTML = '<div style="color:var(--text3);font-size:14px;padding:8px 0">No accounts yet.</div>';
   } else {
     accEl.innerHTML = users.map(u => `
       <div class="account-row">
         <div>
-          <div class="account-name">${u.name}</div>
-          <div class="account-user">@${u.username}</div>
+          <div class="account-name">${u.name} ${u.username === getSession() ? '<span style="font-size:11px;color:var(--accent)">(you)</span>' : ''}</div>
+          <div class="account-user">@${u.username} · ${roleLabel[u.role] || '🔑 Manager'} · ${u.outlet || 'Main Outlet'}</div>
         </div>
-        ${u.username !== getSession() ? `<button class="tbl-btn del" data-deluser="${u.username}">Remove</button>` : '<span style="font-size:12px;color:var(--text3)">You</span>'}
+        <div class="action-btns">
+          ${u.username !== getSession() ? `
+            <select class="role-select" data-user="${u.username}" style="padding:4px 6px;border:1px solid var(--border2);border-radius:4px;font-size:12px;background:var(--bg)">
+              <option value="manager" ${u.role==='manager'?'selected':''}>Manager</option>
+              <option value="cashier" ${u.role==='cashier'?'selected':''}>Cashier</option>
+              <option value="kitchen" ${u.role==='kitchen'?'selected':''}>Kitchen</option>
+            </select>
+            <button class="tbl-btn del" data-deluser="${u.username}">Remove</button>
+          ` : ''}
+        </div>
       </div>
     `).join('');
+    accEl.querySelectorAll('.role-select').forEach(sel => {
+      sel.addEventListener('change', () => {
+        const updated = getUsers().map(u => u.username === sel.dataset.user ? { ...u, role: sel.value } : u);
+        saveUsers(updated);
+        toast('Role updated.');
+      });
+    });
     accEl.querySelectorAll('[data-deluser]').forEach(btn => {
       btn.addEventListener('click', () => {
         if (!confirm(`Remove account @${btn.dataset.deluser}?`)) return;

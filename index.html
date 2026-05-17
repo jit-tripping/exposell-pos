@@ -33,6 +33,14 @@
         <div class="form-group"><label>Username</label><input type="text" id="signup-username" placeholder="Username" autocomplete="username" /></div>
         <div class="form-group"><label>Password</label><input type="password" id="signup-password" placeholder="Password" autocomplete="new-password" /></div>
         <div class="form-group"><label>Confirm Password</label><input type="password" id="signup-confirm" placeholder="Confirm password" autocomplete="new-password" /></div>
+        <div class="form-group"><label>Role</label>
+          <select id="signup-role" style="width:100%;padding:10px 12px;border:1px solid var(--border2);border-radius:6px;font-size:14px;background:var(--bg);color:var(--text)">
+            <option value="manager">🔑 Manager</option>
+            <option value="cashier">🧾 Cashier</option>
+            <option value="kitchen">👨‍🍳 Kitchen</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Outlet</label><input type="text" id="signup-outlet" placeholder="e.g. Main Outlet, Drive-Thru" /></div>
         <div class="auth-error" id="signup-error"></div>
         <button class="btn-auth" id="signup-btn">Create account</button>
       </div>
@@ -54,6 +62,7 @@
         <li><button class="nav-btn" data-page="inventory"><span class="nav-icon">📦</span> Inventory</button></li>
         <li><button class="nav-btn" data-page="reports"><span class="nav-icon">📊</span> Reports</button></li>
         <li><button class="nav-btn" data-page="restaurant"><span class="nav-icon">🍽</span> Restaurant</button></li>
+        <li><button class="nav-btn" data-page="shifts"><span class="nav-icon">⏱</span> Shifts</button></li>
         <li><button class="nav-btn" data-page="invoice"><span class="nav-icon">🧾</span> Invoices</button></li>
         <li><button class="nav-btn" data-page="admin"><span class="nav-icon">⚙️</span> Admin</button></li>
       </ul>
@@ -119,6 +128,18 @@
         <div class="reports-grid">
           <div class="report-card"><h3>Best Sellers</h3><div id="top-products-list"></div></div>
           <div class="report-card"><h3>History</h3><div class="sales-log" id="sales-log"></div></div>
+        </div>
+      </section>
+
+      <!-- SHIFTS PAGE -->
+      <section id="page-shifts" class="page">
+        <div class="page-header"><h1>Shifts</h1></div>
+        <div class="shifts-layout">
+          <div id="shifts-clock-area"></div>
+          <div class="shifts-history-panel">
+            <h3>Shift History</h3>
+            <div id="shifts-history"></div>
+          </div>
         </div>
       </section>
 

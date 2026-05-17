@@ -591,6 +591,72 @@ body {
 .account-name { font-weight: 500; }
 .account-user { font-size: 12px; color: var(--text3); font-family: 'DM Mono', monospace; }
 
+/* SHIFTS */
+.shifts-layout { display: grid; grid-template-columns: 360px 1fr; gap: 20px; }
+@media (max-width: 900px) { .shifts-layout { grid-template-columns: 1fr; } }
+
+.shift-active-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 22px;
+}
+.shift-active-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+.shift-active-name { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; }
+.shift-active-meta { font-size: 13px; color: var(--text2); margin-top: 2px; text-transform: capitalize; }
+.shift-live-badge { padding: 5px 12px; border-radius: 20px; font-size: 13px; font-weight: 500; }
+.shift-live-badge.on-shift { background: var(--green-light); color: var(--green); }
+.shift-live-badge.on-break { background: var(--amber-light); color: var(--amber); }
+
+.shift-active-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 18px; }
+.shift-stat { background: var(--bg2); border-radius: var(--r-sm); padding: 12px; text-align: center; }
+.shift-stat-val { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 500; }
+.shift-stat-label { font-size: 11px; color: var(--text3); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.4px; }
+
+.shift-clock-btns { display: flex; gap: 10px; }
+.shift-clock-btns .btn-outline, .shift-clock-btns .btn-auth { flex: 1; text-align: center; }
+
+.shift-clocked-out {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 40px 22px;
+  text-align: center;
+}
+
+.shifts-history-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 20px; }
+.shifts-history-panel h3 { font-family: 'Fraunces', serif; font-size: 16px; font-weight: 600; margin-bottom: 14px; }
+
+.shift-history-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.shift-history-row:last-child { border-bottom: none; }
+.shift-h-name { font-size: 14px; font-weight: 500; }
+.shift-h-outlet { font-size: 12px; color: var(--text3); font-weight: 400; margin-left: 4px; }
+.shift-h-time { font-size: 12px; color: var(--text3); margin-top: 2px; font-family: 'DM Mono', monospace; }
+.shift-h-right { text-align: right; }
+.shift-h-dur { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 500; }
+.shift-h-sales { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+/* Green dot for active shift */
+.shift-dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  background: var(--green);
+  border-radius: 50%;
+  margin-left: 4px;
+  vertical-align: middle;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
 /* RESTAURANT */
 .r-tabs {
   display: flex;
