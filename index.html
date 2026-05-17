@@ -3,20 +3,141 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ExpoSell — Open Source Free POS</title>
+  <title>Blue Ocean Mall Express</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
-  <!-- AUTH SCREEN -->
-  <div id="auth-screen">
-    <div class="auth-card">
-      <div class="auth-brand">
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- MALL STOREFRONT — shown to customers by default        -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div id="mall-screen">
+
+    <!-- Top bar -->
+    <header class="mall-header">
+      <div class="mall-logo">
+        <span class="mall-logo-icon">🌊</span>
+        <div>
+          <div class="mall-logo-name">Blue Ocean Mall Express</div>
+          <div class="mall-logo-sub">School Business Expo</div>
+        </div>
+      </div>
+      <div class="mall-header-right">
+        <button class="mall-cart-btn" id="mall-cart-btn">
+          🛍 Cart <span class="mall-cart-count" id="mall-cart-count">0</span>
+        </button>
+        <button class="mall-staff-btn" id="mall-staff-btn">Staff Login</button>
+      </div>
+    </header>
+
+    <!-- Hero -->
+    <div class="mall-hero">
+      <div class="mall-hero-inner">
+        <div class="mall-hero-tag">School Expo · Limited Time</div>
+        <h1 class="mall-hero-title">Shop the best brands<br/>all in one place.</h1>
+        <p class="mall-hero-sub">Browse our student-run stores and order directly from your phone.</p>
+        <button class="mall-hero-cta" onclick="document.getElementById('mall-shops').scrollIntoView({behavior:'smooth'})">Explore Shops ↓</button>
+      </div>
+    </div>
+
+    <!-- Shop filter tabs -->
+    <div class="mall-section" id="mall-shops">
+      <div class="mall-section-header">
+        <h2 class="mall-section-title">Our Stores</h2>
+        <div class="mall-shop-tabs" id="mall-shop-tabs"></div>
+      </div>
+
+      <!-- Shop cards -->
+      <div class="mall-shops-grid" id="mall-shops-grid"></div>
+    </div>
+
+    <!-- Products section -->
+    <div class="mall-section" id="mall-products-section" style="display:none">
+      <div class="mall-section-header">
+        <div>
+          <button class="mall-back-btn" id="mall-back-btn">← All Shops</button>
+          <h2 class="mall-section-title" id="mall-products-title">Products</h2>
+        </div>
+      </div>
+      <div class="mall-products-grid" id="mall-products-grid"></div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="mall-footer">
+      <div>🌊 Blue Ocean Mall Express · School Business Expo</div>
+      <div style="font-size:12px;opacity:0.5;margin-top:4px">Powered by ExpoSell POS</div>
+    </footer>
+  </div>
+
+  <!-- Mall Cart Drawer -->
+  <div class="mall-cart-overlay" id="mall-cart-overlay">
+    <div class="mall-cart-drawer" id="mall-cart-drawer">
+      <div class="mall-cart-header">
+        <h3>Your Cart</h3>
+        <button class="mall-cart-close" id="mall-cart-close">✕</button>
+      </div>
+      <div class="mall-cart-items" id="mall-cart-items">
+        <div class="mall-cart-empty">Your cart is empty.</div>
+      </div>
+      <div class="mall-cart-footer" id="mall-cart-footer" style="display:none">
+        <div class="mall-cart-total-row"><span>Total</span><span id="mall-cart-total">$0.00</span></div>
+        <button class="mall-checkout-btn" id="mall-checkout-btn">Checkout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mall Checkout Modal -->
+  <div class="modal-overlay" id="mall-checkout-modal">
+    <div class="modal" style="width:480px">
+      <h2 style="font-family:'Fraunces',serif;margin-bottom:16px">Checkout</h2>
+      <div class="form-group"><label>Your Name</label><input type="text" id="mall-buyer-name" placeholder="Enter your name" /></div>
+      <div id="mall-checkout-items" style="margin:14px 0;max-height:180px;overflow-y:auto"></div>
+      <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:16px">
+        <div class="summary-row total"><span>Total</span><span id="mall-checkout-total">$0.00</span></div>
+      </div>
+      <div class="payment-label">Pay with</div>
+      <div class="payment-methods" style="margin-bottom:16px">
+        <button class="mall-pay-method pay-method active" data-method="cash">Cash</button>
+        <button class="mall-pay-method pay-method" data-method="card">Card</button>
+        <button class="mall-pay-method pay-method" data-method="qr">QR / Digital</button>
+      </div>
+      <div id="mall-cash-area">
+        <div class="form-group"><label>Cash given</label>
+          <input type="number" id="mall-cash-given" placeholder="0.00" step="0.01" min="0"
+            style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:6px;font-size:15px;font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);outline:none"/>
+        </div>
+        <div id="mall-change-display" style="font-family:'DM Mono',monospace;font-size:14px;font-weight:500;min-height:20px;margin-bottom:8px"></div>
+      </div>
+      <div class="auth-error" id="mall-checkout-error"></div>
+      <div class="modal-actions">
+        <button class="btn-auth" id="mall-confirm-btn">Confirm Order</button>
+        <button class="btn-outline" id="mall-cancel-checkout-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mall Order Receipt Modal -->
+  <div class="modal-overlay" id="mall-receipt-modal">
+    <div class="modal">
+      <div class="receipt" id="mall-receipt-content"></div>
+      <div class="modal-actions">
+        <button class="btn-primary" id="mall-print-receipt-btn">🖨 Print</button>
+        <button class="btn-outline" id="mall-receipt-close-btn">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- STAFF AUTH MODAL (top-corner triggered)               -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="auth-modal">
+    <div class="modal" style="width:380px">
+      <div class="auth-brand" style="text-align:center;margin-bottom:20px">
         <span class="auth-icon">☕</span>
-        <div class="auth-brand-name">ExpoSell</div>
-        <div class="auth-brand-sub">Open Source Free POS</div>
+        <div class="auth-brand-name">ExpoSell POS</div>
+        <div class="auth-brand-sub">Staff Access</div>
       </div>
       <div class="auth-tabs">
         <button class="auth-tab active" id="tab-login">Log in</button>
@@ -40,13 +161,17 @@
             <option value="kitchen">👨‍🍳 Kitchen</option>
           </select>
         </div>
-        <div class="form-group"><label>Outlet</label><input type="text" id="signup-outlet" placeholder="e.g. Main Outlet, Drive-Thru" /></div>
+        <div class="form-group"><label>Outlet</label><input type="text" id="signup-outlet" placeholder="e.g. Adidas, Nike, Food Court" /></div>
         <div class="auth-error" id="signup-error"></div>
         <button class="btn-auth" id="signup-btn">Create account</button>
       </div>
+      <button class="btn-outline" id="auth-modal-close" style="width:100%;margin-top:10px">Cancel</button>
     </div>
   </div>
 
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- MAIN POS APP — hidden until staff logs in              -->
+  <!-- ═══════════════════════════════════════════════════════ -->
   <!-- MAIN APP -->
   <div id="app" style="display:none">
     <nav class="sidebar">
@@ -360,6 +485,7 @@
       </div>
     </div>
   </div>
+
 
   <script src="app.js"></script>
 </body>

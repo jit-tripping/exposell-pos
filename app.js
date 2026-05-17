@@ -43,7 +43,8 @@ function applyRoleNav(role) {
 }
 
 function showApp(username) {
-  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('auth-modal').classList.remove('open');
+  document.getElementById('mall-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   const user = getUsers().find(u => u.username === username);
   const role = user ? (user.role || 'manager') : 'manager';
@@ -58,8 +59,18 @@ function showApp(username) {
 
 function showAuth() {
   document.getElementById('app').style.display = 'none';
-  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('mall-screen').style.display = 'block';
 }
+
+// Staff login button on mall header
+document.getElementById('mall-staff-btn').addEventListener('click', () => {
+  document.getElementById('auth-modal').classList.add('open');
+  document.getElementById('login-error').textContent = '';
+  document.getElementById('signup-error').textContent = '';
+});
+document.getElementById('auth-modal-close').addEventListener('click', () => {
+  document.getElementById('auth-modal').classList.remove('open');
+});
 
 // Tab switching
 document.getElementById('tab-login').addEventListener('click', () => {
@@ -133,22 +144,26 @@ document.getElementById('logout-btn').addEventListener('click', () => {
     clockOut();
   }
   clearSession();
-  showAuth();
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.querySelector('[data-page="pos"]').classList.add('active');
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-pos').classList.add('active');
+  showAuth();
+  initMall();
 });
 
-// Check existing session on load
+// Check existing session on load — show mall by default, POS if already logged in
 (function checkSession() {
   const session = getSession();
   if (session) {
     const users = getUsers();
-    if (users.find(u => u.username === session)) { showApp(session); return; }
+    if (users.find(u => u.username === session)) { showApp(session); initApp(); return; }
     clearSession();
   }
-  showAuth();
+  // Default: show mall storefront
+  document.getElementById('mall-screen').style.display = 'block';
+  document.getElementById('app').style.display = 'none';
+  initMall();
 })();
 
 // ─── SHIFTS ───────────────────────────────────────────────────────────────────
@@ -1771,10 +1786,400 @@ function initRestaurant() {
   renderRestaurant();
 }
 
+// ─── MALL STOREFRONT ──────────────────────────────────────────────────────────
+
+const MALL_SHOPS = [
+  {
+    id: 'adidas', name: 'Adidas', emoji: '🦅', color: '#000000', tagline: 'Impossible is Nothing',
+    products: [
+      { id: 'ad1', name: 'Ultraboost 22', price: 180, emoji: '👟', desc: 'Running shoes' },
+      { id: 'ad2', name: 'Tiro Track Pants', price: 55, emoji: '👖', desc: 'Training pants' },
+      { id: 'ad3', name: 'Trefoil Hoodie', price: 70, emoji: '🧥', desc: 'Classic hoodie' },
+      { id: 'ad4', name: 'Cap', price: 30, emoji: '🧢', desc: 'Adjustable cap' },
+      { id: 'ad5', name: 'Socks 3-Pack', price: 18, emoji: '🧦', desc: 'Crew socks' },
+    ]
+  },
+  {
+    id: 'nike', name: 'Nike', emoji: '✔️', color: '#FF6600', tagline: 'Just Do It',
+    products: [
+      { id: 'nk1', name: 'Air Max 270', price: 160, emoji: '👟', desc: 'Lifestyle sneakers' },
+      { id: 'nk2', name: 'Dri-FIT Tee', price: 35, emoji: '👕', desc: 'Performance tee' },
+      { id: 'nk3', name: 'Tech Fleece', price: 120, emoji: '🧥', desc: 'Fleece joggers' },
+      { id: 'nk4', name: 'Swoosh Cap', price: 28, emoji: '🧢', desc: 'Classic cap' },
+      { id: 'nk5', name: 'Sport Bag', price: 45, emoji: '🎒', desc: 'Gym bag' },
+    ]
+  },
+  {
+    id: 'puma', name: 'Puma', emoji: '🐆', color: '#D4AF37', tagline: 'Forever Faster',
+    products: [
+      { id: 'pu1', name: 'RS-X Sneakers', price: 110, emoji: '👟', desc: 'Retro runners' },
+      { id: 'pu2', name: 'Essentials Tee', price: 28, emoji: '👕', desc: 'Logo tee' },
+      { id: 'pu3', name: 'Liga Shorts', price: 25, emoji: '🩳', desc: 'Training shorts' },
+      { id: 'pu4', name: 'Phase Backpack', price: 40, emoji: '🎒', desc: 'Sports backpack' },
+      { id: 'pu5', name: 'Drift Cat', price: 90, emoji: '👟', desc: 'Motorsport shoes' },
+    ]
+  },
+  {
+    id: 'lv', name: 'Louis Vuitton', emoji: '🟡', color: '#8B6914', tagline: 'The Art of Travel',
+    products: [
+      { id: 'lv1', name: 'Neverfull Tote', price: 1550, emoji: '👜', desc: 'Iconic canvas tote' },
+      { id: 'lv2', name: 'Pochette Métis', price: 2050, emoji: '👛', desc: 'Chain bag' },
+      { id: 'lv3', name: 'Speedy 25', price: 1200, emoji: '👜', desc: 'Classic handbag' },
+      { id: 'lv4', name: 'Belt 35mm', price: 450, emoji: '🥋', desc: 'Monogram belt' },
+      { id: 'lv5', name: 'Card Holder', price: 320, emoji: '💳', desc: 'Slim wallet' },
+    ]
+  },
+  {
+    id: 'gucci', name: 'Gucci', emoji: '🌿', color: '#1B4D3E', tagline: 'Quality is Remembered',
+    products: [
+      { id: 'gc1', name: 'GG Marmont Bag', price: 1290, emoji: '👜', desc: 'Matelassé leather' },
+      { id: 'gc2', name: 'Ace Sneakers', price: 620, emoji: '👟', desc: 'Web stripe' },
+      { id: 'gc3', name: 'Horsebit Loafer', price: 850, emoji: '👞', desc: 'Classic loafer' },
+      { id: 'gc4', name: 'GG Belt', price: 390, emoji: '🥋', desc: 'Interlocking G' },
+      { id: 'gc5', name: 'Sunglasses', price: 320, emoji: '🕶', desc: 'Oval frame' },
+    ]
+  },
+];
+
+let mallCart = []; // { shopId, shopName, productId, name, price, emoji, qty }
+let mallActiveShop = null;
+let mallPayMethod = 'cash';
+
+function getMallCartTotal() {
+  return mallCart.reduce((s, i) => s + i.price * i.qty, 0);
+}
+
+function initMall() {
+  renderMallShops();
+  bindMallEvents();
+}
+
+function renderMallShops() {
+  const grid = document.getElementById('mall-shops-grid');
+  if (!grid) return;
+  grid.innerHTML = MALL_SHOPS.map(shop => `
+    <div class="mall-shop-card" data-shopid="${shop.id}" style="--shop-color:${shop.color}">
+      <div class="mall-shop-emoji">${shop.emoji}</div>
+      <div class="mall-shop-name">${shop.name}</div>
+      <div class="mall-shop-tag">${shop.tagline}</div>
+      <div class="mall-shop-count">${shop.products.length} items</div>
+      <button class="mall-shop-enter">Shop Now →</button>
+    </div>
+  `).join('');
+
+  grid.querySelectorAll('.mall-shop-card').forEach(card => {
+    card.addEventListener('click', () => openMallShop(card.dataset.shopid));
+  });
+}
+
+function openMallShop(shopId) {
+  const shop = MALL_SHOPS.find(s => s.id === shopId);
+  if (!shop) return;
+  mallActiveShop = shopId;
+  document.getElementById('mall-shops').style.display = 'none';
+  document.getElementById('mall-products-section').style.display = 'block';
+  document.getElementById('mall-products-title').textContent = `${shop.emoji} ${shop.name}`;
+  document.getElementById('mall-products-section').scrollIntoView({ behavior: 'smooth' });
+
+  const grid = document.getElementById('mall-products-grid');
+  grid.innerHTML = shop.products.map(p => `
+    <div class="mall-product-card">
+      <div class="mall-product-emoji">${p.emoji}</div>
+      <div class="mall-product-name">${p.name}</div>
+      <div class="mall-product-desc">${p.desc}</div>
+      <div class="mall-product-price">${fmt(p.price)}</div>
+      <button class="mall-add-btn" data-shopid="${shop.id}" data-pid="${p.id}">Add to Cart</button>
+    </div>
+  `).join('');
+
+  grid.querySelectorAll('.mall-add-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      addToMallCart(btn.dataset.shopid, btn.dataset.pid);
+      btn.textContent = '✓ Added';
+      btn.style.background = 'var(--green)';
+      setTimeout(() => { btn.textContent = 'Add to Cart'; btn.style.background = ''; }, 1200);
+    });
+  });
+}
+
+function addToMallCart(shopId, productId) {
+  const shop = MALL_SHOPS.find(s => s.id === shopId);
+  const product = shop?.products.find(p => p.id === productId);
+  if (!product) return;
+  const existing = mallCart.find(i => i.productId === productId);
+  if (existing) existing.qty++;
+  else mallCart.push({ shopId, shopName: shop.name, productId, name: product.name, price: product.price, emoji: product.emoji, qty: 1 });
+  updateMallCartBadge();
+  toast(`${product.emoji} ${product.name} added to cart`);
+}
+
+function updateMallCartBadge() {
+  const count = mallCart.reduce((s, i) => s + i.qty, 0);
+  const badge = document.getElementById('mall-cart-count');
+  if (badge) badge.textContent = count;
+}
+
+function renderMallCart() {
+  const el = document.getElementById('mall-cart-items');
+  const footer = document.getElementById('mall-cart-footer');
+  if (!el) return;
+  if (mallCart.length === 0) {
+    el.innerHTML = '<div class="mall-cart-empty">Your cart is empty.</div>';
+    if (footer) footer.style.display = 'none';
+    return;
+  }
+  // Group by shop
+  const byShop = {};
+  mallCart.forEach(i => {
+    if (!byShop[i.shopName]) byShop[i.shopName] = [];
+    byShop[i.shopName].push(i);
+  });
+  el.innerHTML = Object.entries(byShop).map(([shop, items]) => `
+    <div class="mall-cart-shop-group">
+      <div class="mall-cart-shop-label">${shop}</div>
+      ${items.map(item => `
+        <div class="mall-cart-item">
+          <span class="mall-ci-emoji">${item.emoji}</span>
+          <div class="mall-ci-info">
+            <div class="mall-ci-name">${item.name}</div>
+            <div class="mall-ci-price">${fmt(item.price)}</div>
+          </div>
+          <div class="ci-controls">
+            <button class="qty-btn" data-mc-action="dec" data-mc-pid="${item.productId}">−</button>
+            <span class="qty-val">${item.qty}</span>
+            <button class="qty-btn" data-mc-action="inc" data-mc-pid="${item.productId}">+</button>
+          </div>
+          <span class="ci-total">${fmt(item.price * item.qty)}</span>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+
+  el.querySelectorAll('[data-mc-action]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = mallCart.findIndex(i => i.productId === btn.dataset.mcPid);
+      if (btn.dataset.mcAction === 'inc') mallCart[idx].qty++;
+      else { mallCart[idx].qty--; if (mallCart[idx].qty <= 0) mallCart.splice(idx, 1); }
+      updateMallCartBadge();
+      renderMallCart();
+    });
+  });
+
+  const total = getMallCartTotal();
+  if (document.getElementById('mall-cart-total')) document.getElementById('mall-cart-total').textContent = fmt(total);
+  if (footer) footer.style.display = 'block';
+}
+
+function bindMallEvents() {
+  // Cart open/close
+  const cartBtn = document.getElementById('mall-cart-btn');
+  const overlay = document.getElementById('mall-cart-overlay');
+  const closeBtn = document.getElementById('mall-cart-close');
+  if (cartBtn && !cartBtn.dataset.bound) {
+    cartBtn.dataset.bound = '1';
+    cartBtn.addEventListener('click', () => { renderMallCart(); overlay.classList.add('open'); });
+    closeBtn.addEventListener('click', () => overlay.classList.remove('open'));
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+  }
+
+  // Back button
+  const backBtn = document.getElementById('mall-back-btn');
+  if (backBtn && !backBtn.dataset.bound) {
+    backBtn.dataset.bound = '1';
+    backBtn.addEventListener('click', () => {
+      document.getElementById('mall-products-section').style.display = 'none';
+      document.getElementById('mall-shops').style.display = 'block';
+      mallActiveShop = null;
+    });
+  }
+
+  // Checkout button
+  const checkoutBtn = document.getElementById('mall-checkout-btn');
+  if (checkoutBtn && !checkoutBtn.dataset.bound) {
+    checkoutBtn.dataset.bound = '1';
+    checkoutBtn.addEventListener('click', () => {
+      document.getElementById('mall-cart-overlay').classList.remove('open');
+      openMallCheckout();
+    });
+  }
+
+  // Payment method
+  document.querySelectorAll('.mall-pay-method').forEach(btn => {
+    if (btn.dataset.bound) return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mall-pay-method').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      mallPayMethod = btn.dataset.method;
+      document.getElementById('mall-cash-area').style.display = mallPayMethod === 'cash' ? 'block' : 'none';
+      document.getElementById('mall-change-display').textContent = '';
+    });
+  });
+
+  // Cash change calc
+  const cashInput = document.getElementById('mall-cash-given');
+  if (cashInput && !cashInput.dataset.bound) {
+    cashInput.dataset.bound = '1';
+    cashInput.addEventListener('input', () => {
+      const given = parseFloat(cashInput.value) || 0;
+      const total = getMallCartTotal();
+      const el = document.getElementById('mall-change-display');
+      if (given >= total && total > 0) { el.textContent = `Change: ${fmt(given - total)}`; el.style.color = 'var(--green)'; }
+      else if (given > 0) { el.textContent = `Short: ${fmt(total - given)}`; el.style.color = 'var(--red)'; }
+      else el.textContent = '';
+    });
+  }
+
+  // Confirm order
+  const confirmBtn = document.getElementById('mall-confirm-btn');
+  if (confirmBtn && !confirmBtn.dataset.bound) {
+    confirmBtn.dataset.bound = '1';
+    confirmBtn.addEventListener('click', completeMallOrder);
+  }
+
+  // Cancel checkout
+  const cancelBtn = document.getElementById('mall-cancel-checkout-btn');
+  if (cancelBtn && !cancelBtn.dataset.bound) {
+    cancelBtn.dataset.bound = '1';
+    cancelBtn.addEventListener('click', () => document.getElementById('mall-checkout-modal').classList.remove('open'));
+  }
+
+  // Receipt close & print
+  const receiptClose = document.getElementById('mall-receipt-close-btn');
+  if (receiptClose && !receiptClose.dataset.bound) {
+    receiptClose.dataset.bound = '1';
+    receiptClose.addEventListener('click', () => document.getElementById('mall-receipt-modal').classList.remove('open'));
+  }
+  const printBtn = document.getElementById('mall-print-receipt-btn');
+  if (printBtn && !printBtn.dataset.bound) {
+    printBtn.dataset.bound = '1';
+    printBtn.addEventListener('click', () => {
+      const content = document.getElementById('mall-receipt-content').innerHTML;
+      const win = window.open('', '_blank', 'width=380,height=680');
+      win.document.write(`<!DOCTYPE html><html><head><title>Receipt</title><style>
+        body{font-family:'Courier New',monospace;font-size:13px;padding:24px;max-width:320px;margin:0 auto}
+        .receipt-header{text-align:center;margin-bottom:10px}.r-biz{font-size:16px;font-weight:bold}
+        .receipt-divider{border:none;border-top:1px dashed #aaa;margin:8px 0}
+        .receipt-row,.receipt-total-row{display:flex;justify-content:space-between;margin:3px 0}
+        .receipt-total-row{font-weight:bold;font-size:15px}
+        .receipt-qr{text-align:center;margin:12px 0 8px}
+        .receipt-footer{text-align:center;color:#888;font-size:12px;margin-top:8px}
+      </style></head><body>${content}</body></html>`);
+      win.document.close(); win.focus(); setTimeout(() => { win.print(); win.close(); }, 500);
+    });
+  }
+}
+
+function openMallCheckout() {
+  const total = getMallCartTotal();
+  document.getElementById('mall-checkout-total').textContent = fmt(total);
+  document.getElementById('mall-buyer-name').value = '';
+  document.getElementById('mall-cash-given').value = '';
+  document.getElementById('mall-change-display').textContent = '';
+  document.getElementById('mall-checkout-error').textContent = '';
+  document.getElementById('mall-cash-area').style.display = 'block';
+  document.querySelectorAll('.mall-pay-method').forEach(b => b.classList.toggle('active', b.dataset.method === 'cash'));
+  mallPayMethod = 'cash';
+
+  // Group by shop
+  const byShop = {};
+  mallCart.forEach(i => { if (!byShop[i.shopName]) byShop[i.shopName] = []; byShop[i.shopName].push(i); });
+  document.getElementById('mall-checkout-items').innerHTML =
+    Object.entries(byShop).map(([shop, items]) => `
+      <div style="margin-bottom:10px">
+        <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px">${shop}</div>
+        ${items.map(i => `
+          <div class="receipt-row" style="font-size:13px;font-family:'DM Mono',monospace">
+            <span>${i.emoji} ${i.name} ×${i.qty}</span><span>${fmt(i.price * i.qty)}</span>
+          </div>`).join('')}
+      </div>`).join('<hr style="border:none;border-top:1px solid var(--border);margin:8px 0"/>');
+
+  document.getElementById('mall-checkout-modal').classList.add('open');
+}
+
+function completeMallOrder() {
+  const name = document.getElementById('mall-buyer-name').value.trim() || 'Customer';
+  const total = getMallCartTotal();
+  const errEl = document.getElementById('mall-checkout-error');
+  if (mallPayMethod === 'cash') {
+    const given = parseFloat(document.getElementById('mall-cash-given').value) || 0;
+    if (given < total) { errEl.textContent = 'Not enough cash.'; return; }
+  }
+
+  const orderId = Date.now();
+  const receiptText = [
+    '🌊 Blue Ocean Mall Express',
+    `Order #${orderId}`,
+    `Customer: ${name}`,
+    `${today()} ${now()}`,
+    '----------------------------',
+    ...mallCart.map(i => `${i.shopName}: ${i.emoji} ${i.name} x${i.qty}  ${fmt(i.price * i.qty)}`),
+    '----------------------------',
+    `TOTAL: ${fmt(total)}`,
+    mallPayMethod === 'cash'
+      ? `Cash: ${fmt(parseFloat(document.getElementById('mall-cash-given').value))}  Change: ${fmt(parseFloat(document.getElementById('mall-cash-given').value) - total)}`
+      : `Paid by: ${mallPayMethod}`,
+    '----------------------------',
+    'Thank you for shopping!',
+  ].join('\n');
+
+  // Record each shop's sales
+  const byShop = {};
+  mallCart.forEach(i => { if (!byShop[i.shopId]) byShop[i.shopId] = []; byShop[i.shopId].push(i); });
+  Object.entries(byShop).forEach(([shopId, items]) => {
+    const shopTotal = items.reduce((s, i) => s + i.price * i.qty, 0);
+    state.sales.push({
+      id: Date.now() + Math.random(),
+      items: items.map(i => ({ name: i.name, emoji: i.emoji, price: i.price, qty: i.qty })),
+      subtotal: shopTotal, tax: 0, total: shopTotal,
+      paymentMethod: mallPayMethod, time: now(), date: today(),
+      timestamp: new Date().toISOString(),
+      cashier: 'mall-customer',
+      source: 'mall',
+      shopId, shopName: MALL_SHOPS.find(s => s.id === shopId)?.name,
+      buyerName: name,
+    });
+  });
+  saveState();
+  updateSidebarTotal();
+
+  // Show receipt
+  const given = mallPayMethod === 'cash' ? parseFloat(document.getElementById('mall-cash-given').value) : null;
+  document.getElementById('mall-receipt-content').innerHTML = `
+    <div class="receipt-header">
+      <div class="r-biz">🌊 Blue Ocean Mall Express</div>
+      <div style="font-size:13px">Thank you, ${name}!</div>
+      <div style="font-size:11px;color:#aaa">Order #${orderId} · ${today()} ${now()}</div>
+    </div>
+    <hr class="receipt-divider"/>
+    ${Object.entries(byShop).map(([sid, items]) => `
+      <div style="font-size:11px;font-weight:bold;color:#888;margin:6px 0 2px">${MALL_SHOPS.find(s=>s.id===sid)?.name}</div>
+      ${items.map(i=>`<div class="receipt-row"><span>${i.emoji} ${i.name} ×${i.qty}</span><span>${fmt(i.price*i.qty)}</span></div>`).join('')}
+    `).join('<hr class="receipt-divider"/>')}
+    <hr class="receipt-divider"/>
+    <div class="receipt-total-row"><span>Total</span><span>${fmt(total)}</span></div>
+    ${given != null ? `<hr class="receipt-divider"/>
+    <div class="receipt-row"><span>Cash</span><span>${fmt(given)}</span></div>
+    <div class="receipt-row"><span>Change</span><span>${fmt(given - total)}</span></div>` : `<div class="receipt-row"><span>Paid by</span><span>${mallPayMethod}</span></div>`}
+    <hr class="receipt-divider"/>
+    <div class="receipt-qr">
+      <div style="font-size:11px;color:#999;margin-bottom:6px">Scan for receipt</div>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(receiptText)}" width="110" height="110" alt="QR"/>
+    </div>
+    <div class="receipt-footer">🌊 Blue Ocean Mall Express · School Expo</div>
+  `;
+
+  document.getElementById('mall-checkout-modal').classList.remove('open');
+  document.getElementById('mall-receipt-modal').classList.add('open');
+  mallCart = [];
+  updateMallCartBadge();
+}
+
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
 function initApp() {
   renderProducts();
   renderCart();
   updateSidebarTotal();
 }
-
-if (getSession()) { initApp(); }
