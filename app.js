@@ -1,15 +1,3 @@
-// ─── FIREBASE IMPORTS ─────────────────────────────────────────────────────────
-import {
-  bootstrapApp, loadSettings, saveSettings,
-  fbGetUsers, fbSaveUser, fbDeleteUser, fbGetUser,
-  fbGetProducts, fbSaveProduct, fbDeleteProduct,
-  fbGetSales, fbAddSale,
-  fbGetShifts, fbSaveShift,
-  fbGetRestaurantMenu, fbSaveMenuItem, fbDeleteMenuItem,
-  fbGetRestaurantOrders, fbSaveRestaurantOrder,
-  listenProducts, listenSales, listenRestaurantOrders, listenShifts,
-} from './firebase.js';
-
 // ─── IN-MEMORY USER & SHIFT STORE (synced from Firebase) ─────────────────────
 let _users  = [];
 let _shifts = [];
@@ -1782,7 +1770,7 @@ function initRestaurant() {
 
 const MALL_SHOPS = [
   {
-    id: 'adidas', name: 'Adidas', emoji: '🦅', color: '#000000', tagline: 'Impossible is Nothing',
+    id: 'adidas', name: 'Adidas', emoji: '🦅', color: '#000000', tagline: 'Adidas Experience Store',
     products: [
       { id: 'ad1', name: 'Ultraboost 22', price: 180, emoji: '👟', desc: 'Running shoes' },
       { id: 'ad2', name: 'Tiro Track Pants', price: 55, emoji: '👖', desc: 'Training pants' },
@@ -1792,7 +1780,7 @@ const MALL_SHOPS = [
     ]
   },
   {
-    id: 'nike', name: 'Nike', emoji: '✔️', color: '#FF6600', tagline: 'Just Do It',
+    id: 'nike', name: 'Nike', emoji: '✔️', color: '#FF6600', tagline: 'Nike Experience Store',
     products: [
       { id: 'nk1', name: 'Air Max 270', price: 160, emoji: '👟', desc: 'Lifestyle sneakers' },
       { id: 'nk2', name: 'Dri-FIT Tee', price: 35, emoji: '👕', desc: 'Performance tee' },
@@ -1802,7 +1790,7 @@ const MALL_SHOPS = [
     ]
   },
   {
-    id: 'puma', name: 'Puma', emoji: '🐆', color: '#D4AF37', tagline: 'Forever Faster',
+    id: 'puma', name: 'Puma', emoji: '🐆', color: '#D4AF37', tagline: 'Puma Experience Store',
     products: [
       { id: 'pu1', name: 'RS-X Sneakers', price: 110, emoji: '👟', desc: 'Retro runners' },
       { id: 'pu2', name: 'Essentials Tee', price: 28, emoji: '👕', desc: 'Logo tee' },
@@ -1812,7 +1800,7 @@ const MALL_SHOPS = [
     ]
   },
   {
-    id: 'lv', name: 'Louis Vuitton', emoji: '🟡', color: '#8B6914', tagline: 'The Art of Travel',
+    id: 'lv', name: 'Louis Vuitton', emoji: '🟡', color: '#8B6914', tagline: 'Louis Vuitton Experience Store',
     products: [
       { id: 'lv1', name: 'Neverfull Tote', price: 1550, emoji: '👜', desc: 'Iconic canvas tote' },
       { id: 'lv2', name: 'Pochette Métis', price: 2050, emoji: '👛', desc: 'Chain bag' },
@@ -1822,7 +1810,7 @@ const MALL_SHOPS = [
     ]
   },
   {
-    id: 'gucci', name: 'Gucci', emoji: '🌿', color: '#1B4D3E', tagline: 'Quality is Remembered',
+    id: 'gucci', name: 'Gucci', emoji: '🌿', color: '#1B4D3E', tagline: 'Gucci Experience Store',
     products: [
       { id: 'gc1', name: 'GG Marmont Bag', price: 1290, emoji: '👜', desc: 'Matelassé leather' },
       { id: 'gc2', name: 'Ace Sneakers', price: 620, emoji: '👟', desc: 'Web stripe' },
@@ -2159,7 +2147,7 @@ function completeMallOrder() {
       <div style="font-size:11px;color:#999;margin-bottom:6px">Scan for receipt</div>
       <img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(receiptText)}" width="110" height="110" alt="QR"/>
     </div>
-    <div class="receipt-footer">🌊 Blue Ocean Mall Express · School Expo</div>
+    <div class="receipt-footer">🌊 Blue Ocean Mall Express · Powered by EasyPOS</div>
   `;
 
   document.getElementById('mall-checkout-modal').classList.remove('open');
