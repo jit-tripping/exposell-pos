@@ -1770,7 +1770,7 @@ function initRestaurant() {
 
 const MALL_SHOPS = [
   {
-    id: 'adidas', name: 'Adidas', emoji: '🦅', color: '#000000', tagline: 'Adidas Experience Store',
+    id: 'adidas', name: 'Adidas', emoji: '🦅', color: '#000000', tagline: 'Impossible is Nothing',
     products: [
       { id: 'ad1', name: 'Ultraboost 22', price: 180, emoji: '👟', desc: 'Running shoes' },
       { id: 'ad2', name: 'Tiro Track Pants', price: 55, emoji: '👖', desc: 'Training pants' },
@@ -1780,7 +1780,7 @@ const MALL_SHOPS = [
     ]
   },
   {
-    id: 'nike', name: 'Nike', emoji: '✔️', color: '#FF6600', tagline: 'Nike Experience Store',
+    id: 'nike', name: 'Nike', emoji: '✔️', color: '#FF6600', tagline: 'Just Do It',
     products: [
       { id: 'nk1', name: 'Air Max 270', price: 160, emoji: '👟', desc: 'Lifestyle sneakers' },
       { id: 'nk2', name: 'Dri-FIT Tee', price: 35, emoji: '👕', desc: 'Performance tee' },
@@ -1790,7 +1790,7 @@ const MALL_SHOPS = [
     ]
   },
   {
-    id: 'puma', name: 'Puma', emoji: '🐆', color: '#D4AF37', tagline: 'Puma Experience Store',
+    id: 'puma', name: 'Puma', emoji: '🐆', color: '#D4AF37', tagline: 'Forever Faster',
     products: [
       { id: 'pu1', name: 'RS-X Sneakers', price: 110, emoji: '👟', desc: 'Retro runners' },
       { id: 'pu2', name: 'Essentials Tee', price: 28, emoji: '👕', desc: 'Logo tee' },
@@ -1800,7 +1800,7 @@ const MALL_SHOPS = [
     ]
   },
   {
-    id: 'lv', name: 'Louis Vuitton', emoji: '🟡', color: '#8B6914', tagline: 'Louis Vuitton Experience Store',
+    id: 'lv', name: 'Louis Vuitton', emoji: '🟡', color: '#8B6914', tagline: 'The Art of Travel',
     products: [
       { id: 'lv1', name: 'Neverfull Tote', price: 1550, emoji: '👜', desc: 'Iconic canvas tote' },
       { id: 'lv2', name: 'Pochette Métis', price: 2050, emoji: '👛', desc: 'Chain bag' },
@@ -1810,13 +1810,50 @@ const MALL_SHOPS = [
     ]
   },
   {
-    id: 'gucci', name: 'Gucci', emoji: '🌿', color: '#1B4D3E', tagline: 'Gucci Experience Store',
+    id: 'gucci', name: 'Gucci', emoji: '🌿', color: '#1B4D3E', tagline: 'Quality is Remembered',
     products: [
       { id: 'gc1', name: 'GG Marmont Bag', price: 1290, emoji: '👜', desc: 'Matelassé leather' },
       { id: 'gc2', name: 'Ace Sneakers', price: 620, emoji: '👟', desc: 'Web stripe' },
       { id: 'gc3', name: 'Horsebit Loafer', price: 850, emoji: '👞', desc: 'Classic loafer' },
       { id: 'gc4', name: 'GG Belt', price: 390, emoji: '🥋', desc: 'Interlocking G' },
       { id: 'gc5', name: 'Sunglasses', price: 320, emoji: '🕶', desc: 'Oval frame' },
+    ]
+  },
+  {
+    id: 'playstation', name: 'PlayStation Store', emoji: '🎮', color: '#003087', tagline: 'Play Has No Limits',
+    products: [
+      { id: 'ps1',  name: 'PlayStation®VR2', price: 399.00, emoji: '🥽', desc: 'Next-gen VR headset' },
+      { id: 'ps2',  name: 'DualSense Edge® Wireless Controller – Midnight Black', price: 199.00, emoji: '🕹️', desc: 'Pro wireless controller' },
+      { id: 'ps3',  name: 'DualSense Edge™ Wireless Controller – 30th Anniversary Limited Edition', price: 219.99, emoji: '🕹️', desc: '30th Anniversary edition' },
+      { id: 'ps4',  name: 'PlayStation®5 Pro Console – 2 TB', price: 899.00, emoji: '🖥️', desc: '2TB PS5 Pro console' },
+      { id: 'ps5',  name: 'DualSense® Wireless Controller – Nova Pink', price: 74.00, emoji: '🕹️', desc: 'Nova Pink wireless controller' },
+      { id: 'ps6',  name: 'Victrix™ Pro BFG™ Reloaded Wireless Modular Controller & Atlas™ 200 Wired Headset Bundle', price: 24.99, emoji: '🎧', desc: 'Controller & headset bundle' },
+      { id: 'ps7',  name: 'PS5® Console Covers (model group – slim) – Techno Red', price: 74.00, emoji: '🔴', desc: 'Techno Red slim covers' },
+      { id: 'ps8',  name: 'Certified Refurbished PlayStation®5 Console (model group – slim)*', price: 549.00, emoji: '🖥️', desc: 'Refurbished PS5 slim' },
+      { id: 'ps9',  name: '2TB WD BLACK Internal SN850P NVMe™ SSD Game Drive', price: 909.99, emoji: '💾', desc: '2TB PS5 internal SSD' },
+      { id: 'ps10', name: '4TB WD BLACK Internal SN850P NVMe™ SSD Game Drive', price: 1369.99, emoji: '💾', desc: '4TB PS5 internal SSD' },
+    ]
+  },
+  {
+    id: 'gamestop', name: 'GameStop', emoji: '🛑', color: '#E31837', tagline: 'Power to the Players',
+    products: [
+      { id: 'gs1',  name: 'Nintendo Switch 2', price: 417.99, emoji: '🎮', desc: 'Latest Nintendo console' },
+      { id: 'gs2',  name: 'MacBook Pro (M1, 13-inch, 2020) – 8GB, SSD 256GB – Silver', price: 449.99, emoji: '💻', desc: 'Apple M1 MacBook Pro' },
+      { id: 'gs3',  name: 'Samsung 980 PRO 1TB PCIe 4.0 NVMe M.2 Internal V-NAND Solid State Drive PlayStation 5 Compatible', price: 89.97, emoji: '💾', desc: 'PS5-compatible 1TB SSD' },
+      { id: 'gs4',  name: 'External Hard Drive 1TB (Styles May Vary)', price: 21.99, emoji: '🗄️', desc: '1TB portable hard drive' },
+      { id: 'gs5',  name: 'Logitech PRO Wireless Gaming Mouse', price: 89.97, emoji: '🖱️', desc: 'Pro wireless mouse' },
+      { id: 'gs6',  name: 'GameStop Air Wired Gaming Mouse with RGB – White', price: 16.97, emoji: '🖱️', desc: 'RGB wired gaming mouse' },
+      { id: 'gs7',  name: 'GameStop 60 Percent Wired Mechanical Keyboard', price: 31.98, emoji: '⌨️', desc: '60% mechanical keyboard' },
+      { id: 'gs8',  name: 'Razer BlackWidow V3 Mini HyperSpeed 65% Wireless Mechanical Keyboard – Green Switch – Black with Chroma RGB', price: 136.97, emoji: '⌨️', desc: 'Razer 65% wireless keyboard' },
+      { id: 'gs9',  name: 'AMD Ryzen 5 5600X Processor 6-core 12 Threads up to 4.6 GHz AM4', price: 165.98, emoji: '🔲', desc: '6-core AM4 processor' },
+      { id: 'gs10', name: 'PNY XLR8 Gaming EPICX RGB 16GB (2×8GB) Desktop Memory Kit MD16GK2D4320016XRGB', price: 58.97, emoji: '🧩', desc: '16GB DDR4 RGB RAM kit' },
+    ]
+  },
+  {
+    id: 'bestbuy', name: 'Best Buy', emoji: '💛', color: '#0046BE', tagline: 'Expert Service. Unbeatable Price.',
+    products: [
+      { id: 'bb1', name: 'CORSAIR – VENGEANCE 16GB (1×16GB) DDR5 4800MHz C40 SODIMM Laptop Memory – Black', price: 164.99, emoji: '🧩', desc: 'DDR5 laptop memory' },
+      { id: 'bb2', name: 'Intel – Core Ultra 7 Processor 270K Plus 24 cores (8 P-cores + 16 E-cores) up to 5.5 GHz – Multi', price: 329.99, emoji: '🔲', desc: '24-core Intel Ultra 7' },
     ]
   },
 ];
@@ -2147,7 +2184,7 @@ function completeMallOrder() {
       <div style="font-size:11px;color:#999;margin-bottom:6px">Scan for receipt</div>
       <img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(receiptText)}" width="110" height="110" alt="QR"/>
     </div>
-    <div class="receipt-footer">🌊 Blue Ocean Mall Express · Powered by EasyPOS</div>
+    <div class="receipt-footer">🌊 Blue Ocean Mall Express · School Expo</div>
   `;
 
   document.getElementById('mall-checkout-modal').classList.remove('open');

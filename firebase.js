@@ -85,12 +85,31 @@ async function fbDeleteUser(username)  { await fbDelDoc('users', username); }
 
 // ─── PRODUCTS ────────────────────────────────────────────────────────────────
 const _DEFAULT_PRODUCTS = [
-  { id: 1, name: 'Lemonade',    category: 'Drinks',      price: 2.50, stock: 30, emoji: '🍋' },
-  { id: 2, name: 'Cookies 2pk', category: 'Snacks',      price: 1.50, stock: 40, emoji: '🍪' },
-  { id: 3, name: 'Bracelet',    category: 'Crafts',      price: 5.00, stock: 15, emoji: '📿' },
-  { id: 4, name: 'Cupcake',     category: 'Baked Goods', price: 3.00, stock: 20, emoji: '🧁' },
-  { id: 5, name: 'Bookmarks',   category: 'Crafts',      price: 1.00, stock: 50, emoji: '🔖' },
-  { id: 6, name: 'Smoothie',    category: 'Drinks',      price: 4.00, stock: 12, emoji: '🥤' },
+  // ── PlayStation Store ──────────────────────────────────────────────────────
+  { id: 1,  name: 'PlayStation®VR2', category: 'PlayStation Store', price: 399.00, stock: 100, emoji: '🥽' },
+  { id: 2,  name: 'DualSense Edge® Wireless Controller – Midnight Black', category: 'PlayStation Store', price: 199.00, stock: 100, emoji: '🕹️' },
+  { id: 3,  name: 'DualSense Edge™ Wireless Controller – 30th Anniversary Limited Edition', category: 'PlayStation Store', price: 219.99, stock: 100, emoji: '🕹️' },
+  { id: 4,  name: 'PlayStation®5 Pro Console – 2 TB', category: 'PlayStation Store', price: 899.00, stock: 100, emoji: '🖥️' },
+  { id: 5,  name: 'DualSense® Wireless Controller – Nova Pink', category: 'PlayStation Store', price: 74.00, stock: 100, emoji: '🕹️' },
+  { id: 6,  name: 'Victrix™ Pro BFG™ Reloaded Wireless Modular Controller & Atlas™ 200 Wired Headset Bundle', category: 'PlayStation Store', price: 24.99, stock: 100, emoji: '🎧' },
+  { id: 7,  name: 'PS5® Console Covers (Slim) – Techno Red', category: 'PlayStation Store', price: 74.00, stock: 100, emoji: '🔴' },
+  { id: 8,  name: 'Certified Refurbished PlayStation®5 Console (Slim)', category: 'PlayStation Store', price: 549.00, stock: 100, emoji: '🖥️' },
+  { id: 9,  name: '2TB WD BLACK Internal SN850P NVMe™ SSD', category: 'PlayStation Store', price: 909.99, stock: 75, emoji: '💾' },
+  { id: 10, name: '4TB WD BLACK Internal SN850P NVMe™ SSD', category: 'PlayStation Store', price: 1369.99, stock: 50, emoji: '💾' },
+  // ── GameStop ───────────────────────────────────────────────────────────────
+  { id: 11, name: 'Nintendo Switch 2', category: 'GameStop', price: 417.99, stock: 100, emoji: '🎮' },
+  { id: 12, name: 'MacBook Pro (M1, 13-inch) – 8GB 256GB Silver', category: 'GameStop', price: 449.99, stock: 100, emoji: '💻' },
+  { id: 13, name: 'Samsung 980 PRO 1TB PCIe 4.0 NVMe SSD (PS5 Compatible)', category: 'GameStop', price: 89.97, stock: 125, emoji: '💾' },
+  { id: 14, name: 'External Hard Drive 1TB', category: 'GameStop', price: 21.99, stock: 150, emoji: '🗄️' },
+  { id: 15, name: 'Logitech PRO Wireless Gaming Mouse', category: 'GameStop', price: 89.97, stock: 100, emoji: '🖱️' },
+  { id: 16, name: 'GameStop Air Wired Gaming Mouse with RGB – White', category: 'GameStop', price: 16.97, stock: 115, emoji: '🖱️' },
+  { id: 17, name: 'GameStop 60% Wired Mechanical Keyboard', category: 'GameStop', price: 31.98, stock: 100, emoji: '⌨️' },
+  { id: 18, name: 'Razer BlackWidow V3 Mini HyperSpeed 65% Wireless Keyboard – Black', category: 'GameStop', price: 136.97, stock: 75, emoji: '⌨️' },
+  { id: 19, name: 'AMD Ryzen 5 5600X Processor 6-core up to 4.6 GHz AM4', category: 'GameStop', price: 165.98, stock: 80, emoji: '🔲' },
+  { id: 20, name: 'PNY XLR8 Gaming 16GB (2×8GB) DDR4 Desktop Memory Kit', category: 'GameStop', price: 58.97, stock: 75, emoji: '🧩' },
+  // ── Best Buy ───────────────────────────────────────────────────────────────
+  { id: 21, name: 'CORSAIR VENGEANCE 16GB DDR5 4800MHz SODIMM Laptop Memory – Black', category: 'Best Buy', price: 164.99, stock: 50, emoji: '🧩' },
+  { id: 22, name: 'Intel Core Ultra 7 Processor 270K – 24 cores up to 5.5 GHz', category: 'Best Buy', price: 329.99, stock: 50, emoji: '🔲' },
 ];
 async function fbGetProducts() {
   let prods = await fbGetAll('products');
