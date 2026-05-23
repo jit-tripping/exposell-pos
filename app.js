@@ -23,9 +23,9 @@ function hashPassword(pw) {
 
 // Role-based nav visibility
 const ROLE_NAV = {
-  manager:  ['pos','inventory','reports','restaurant','invoice','admin','shifts'],
-  cashier:  ['pos','restaurant','shifts'],
-  kitchen:  ['restaurant','shifts'],
+  manager:  ['pos','inventory','reports','restaurant','invoice','admin','shifts','chat'],
+  cashier:  ['pos','restaurant','shifts','chat'],
+  kitchen:  ['restaurant','shifts','chat'],
 };
 
 function applyRoleNav(role) {
@@ -421,6 +421,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     if (page === 'invoice') renderInvoicePage();
     if (page === 'restaurant') initRestaurant();
     if (page === 'shifts') renderShiftsPage();
+    if (page === 'chat') initChat();
   });
 });
 
@@ -520,14 +521,24 @@ document.getElementById('product-search').addEventListener('input', e => renderP
 document.getElementById('clear-cart-btn').addEventListener('click', () => { cart = []; renderCart(); });
 
 // Payment methods
-document.querySelectorAll('.pay-method').forEach(btn => {
+document.querySelectorAll('#page-pos .pay-method').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.pay-method').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('#page-pos .pay-method').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     paymentMethod = btn.dataset.method;
-    const cashArea = document.getElementById('cash-input-area');
-    cashArea.style.display = paymentMethod === 'cash' ? 'block' : 'none';
+    document.getElementById('cash-input-area').style.display = paymentMethod === 'cash' ? 'block' : 'none';
+    document.getElementById('card-input-area').style.display = (paymentMethod === 'card' || paymentMethod === 'qr') ? 'block' : 'none';
+    document.getElementById('blaz-status').textContent = '';
   });
+});
+
+// BLAZ validation in POS
+document.getElementById('blaz-ref').addEventListener('input', function() {
+  this.value = this.value.replace(/\D/g, '').slice(0, 16);
+  const st = document.getElementById('blaz-status');
+  if (!this.value) { st.textContent = ''; return; }
+  if (this.value.length < 16) { st.textContent = `${this.value.length}/16 digits`; st.style.color = 'var(--amber)'; }
+  else { st.textContent = `✓ BLAZ${this.value}`; st.style.color = 'var(--green)'; }
 });
 
 function updateChange() {
@@ -555,6 +566,15 @@ document.getElementById('checkout-btn').addEventListener('click', () => {
     const received = parseFloat(document.getElementById('cash-received').value) || 0;
     if (received < cartGrand()) { toast('Not enough cash.'); return; }
   }
+  if (paymentMethod === 'card' || paymentMethod === 'qr') {
+    const blaz = document.getElementById('blaz-ref').value.replace(/\D/g, '');
+    if (blaz.length !== 16) { toast('Enter a valid 16-digit reference number.'); return; }
+  }
+
+  const cardType = (paymentMethod === 'card' || paymentMethod === 'qr')
+    ? document.getElementById('card-type-select').value : null;
+  const blazRef = (paymentMethod === 'card' || paymentMethod === 'qr')
+    ? 'BLAZ' + document.getElementById('blaz-ref').value : null;
 
   // Record sale
   const sale = {
@@ -564,6 +584,8 @@ document.getElementById('checkout-btn').addEventListener('click', () => {
     tax: cartTax(),
     total: cartGrand(),
     paymentMethod,
+    cardType,
+    blazRef,
     cashReceived: paymentMethod === 'cash' ? parseFloat(document.getElementById('cash-received').value) : null,
     time: now(),
     date: today(),
@@ -633,7 +655,11 @@ function showReceipt(sale) {
     <hr class="receipt-divider"/>
     <div class="receipt-row"><span>Cash</span><span>${fmt(sale.cashReceived)}</span></div>
     <div class="receipt-row"><span>Change</span><span>${fmt(change)}</span></div>
-    ` : `<div class="receipt-row" style="margin-top:6px"><span>Paid by</span><span>${sale.paymentMethod}</span></div>`}
+    ` : `
+    <div class="receipt-row" style="margin-top:6px"><span>Paid by</span><span>${sale.paymentMethod.toUpperCase()}</span></div>
+    ${sale.cardType ? `<div class="receipt-row"><span>Card type</span><span style="font-size:11px">${sale.cardType}</span></div>` : ''}
+    ${sale.blazRef ? `<div class="receipt-row"><span>Ref no.</span><span style="font-family:'Courier New',monospace;font-size:11px">${sale.blazRef}</span></div>` : ''}
+    `}
     <hr class="receipt-divider"/>
     <div class="receipt-qr">
       <div style="font-size:11px;color:#999;margin-bottom:6px">Scan for your receipt</div>
@@ -1420,10 +1446,20 @@ function initRPaymentModal() {
       document.querySelectorAll('.rp-method').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       rPendingOrder.paymentMethod = btn.dataset.method;
-      document.getElementById('rp-cash-area').style.display =
-        btn.dataset.method === 'cash' ? 'block' : 'none';
+      document.getElementById('rp-cash-area').style.display = btn.dataset.method === 'cash' ? 'block' : 'none';
+      document.getElementById('rp-card-area').style.display = (btn.dataset.method === 'card' || btn.dataset.method === 'qr') ? 'block' : 'none';
       document.getElementById('rp-change').textContent = '';
+      document.getElementById('rp-blaz-status').textContent = '';
     });
+  });
+
+  // BLAZ validation for restaurant
+  document.getElementById('rp-blaz-ref').addEventListener('input', function() {
+    this.value = this.value.replace(/\D/g, '').slice(0, 16);
+    const st = document.getElementById('rp-blaz-status');
+    if (!this.value) { st.textContent = ''; return; }
+    if (this.value.length < 16) { st.textContent = `${this.value.length}/16 digits`; st.style.color = 'var(--amber)'; }
+    else { st.textContent = `✓ BLAZ${this.value}`; st.style.color = 'var(--green)'; }
   });
 
   // Cash change calc
@@ -1431,15 +1467,9 @@ function initRPaymentModal() {
     const received = parseFloat(document.getElementById('rp-cash-received').value) || 0;
     const grand = rPendingOrder ? rPendingOrder.total : 0;
     const chEl = document.getElementById('rp-change');
-    if (received >= grand && grand > 0) {
-      chEl.textContent = `Change: ${rFmt(received - grand)}`;
-      chEl.style.color = 'var(--green)';
-    } else if (received > 0) {
-      chEl.textContent = `Short: ${rFmt(grand - received)}`;
-      chEl.style.color = 'var(--red)';
-    } else {
-      chEl.textContent = '';
-    }
+    if (received >= grand && grand > 0) { chEl.textContent = `Change: ${rFmt(received - grand)}`; chEl.style.color = 'var(--green)'; }
+    else if (received > 0) { chEl.textContent = `Short: ${rFmt(grand - received)}`; chEl.style.color = 'var(--red)'; }
+    else chEl.textContent = '';
   });
 
   // Cancel
@@ -1458,6 +1488,12 @@ function initRPaymentModal() {
       rPendingOrder.cashReceived = received;
       rPendingOrder.change = received - rPendingOrder.total;
     }
+    if (rPendingOrder.paymentMethod === 'card' || rPendingOrder.paymentMethod === 'qr') {
+      const blaz = document.getElementById('rp-blaz-ref').value.replace(/\D/g, '');
+      if (blaz.length !== 16) { errEl.textContent = 'Enter a valid 16-digit reference number.'; return; }
+      rPendingOrder.blazRef = 'BLAZ' + blaz;
+      rPendingOrder.cardType = document.getElementById('rp-card-type').value;
+    }
 
     // Save to restaurant orders
     const rOrderToSave = { ...rPendingOrder, paid: true };
@@ -1472,6 +1508,8 @@ function initRPaymentModal() {
       tax: rPendingOrder.tax,
       total: rPendingOrder.total,
       paymentMethod: rPendingOrder.paymentMethod,
+      cardType: rPendingOrder.cardType || null,
+      blazRef: rPendingOrder.blazRef || null,
       cashReceived: rPendingOrder.cashReceived || null,
       time: rPendingOrder.time,
       date: rPendingOrder.date,
@@ -1553,7 +1591,9 @@ function showRReceipt(order) {
       ? `<hr class="receipt-divider"/>
          <div class="receipt-row"><span>Cash</span><span>${rFmt(order.cashReceived)}</span></div>
          <div class="receipt-row"><span>Change</span><span>${rFmt(change)}</span></div>`
-      : `<div class="receipt-row" style="margin-top:6px"><span>Paid by</span><span>${order.paymentMethod}</span></div>`}
+      : `<div class="receipt-row" style="margin-top:6px"><span>Paid by</span><span>${order.paymentMethod.toUpperCase()}</span></div>
+         ${order.cardType ? `<div class="receipt-row"><span>Card type</span><span style="font-size:11px">${order.cardType}</span></div>` : ''}
+         ${order.blazRef ? `<div class="receipt-row"><span>Ref no.</span><span style="font-family:'Courier New',monospace;font-size:11px">${order.blazRef}</span></div>` : ''}`}
     <hr class="receipt-divider"/>
     <div class="receipt-qr">
       <div style="font-size:11px;color:#999;margin-bottom:6px">Scan for receipt</div>
@@ -2193,6 +2233,83 @@ function completeMallOrder() {
   updateMallCartBadge();
 }
 
+
+// ─── CHAT ─────────────────────────────────────────────────────────────────────
+function initChat() {
+  if (document.getElementById('chat-send-btn').dataset.bound) return;
+  document.getElementById('chat-send-btn').dataset.bound = '1';
+
+  // Real-time listener
+  db.collection('chat').orderBy('ts').onSnapshot(snap => {
+    const msgs = snap.docs.map(d => d.data());
+    renderChatMessages(msgs);
+  });
+
+  // Send on button click
+  document.getElementById('chat-send-btn').addEventListener('click', sendChatMessage);
+  document.getElementById('chat-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') sendChatMessage();
+  });
+
+  renderChatOnline();
+}
+
+function sendChatMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  const user = currentUser();
+  db.collection('chat').add({
+    text,
+    sender: user ? user.name : 'Unknown',
+    username: getSession(),
+    role: user ? (user.role || 'manager') : 'manager',
+    outlet: user ? (user.outlet || '') : '',
+    ts: firebase.firestore.FieldValue.serverTimestamp(),
+    tsLocal: new Date().toISOString(),
+  });
+  input.value = '';
+}
+
+function renderChatMessages(msgs) {
+  const el = document.getElementById('chat-messages');
+  if (!el) return;
+  if (msgs.length === 0) {
+    el.innerHTML = '<div class="chat-empty">No messages yet. Say hi! 👋</div>';
+    return;
+  }
+  const me = getSession();
+  el.innerHTML = msgs.map(m => {
+    const isMine = m.username === me;
+    const roleIcon = { manager: '🔑', cashier: '🧾', kitchen: '👨‍🍳' }[m.role] || '👤';
+    const time = m.tsLocal ? new Date(m.tsLocal).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+    return `
+      <div class="chat-msg ${isMine ? 'mine' : 'theirs'}">
+        ${!isMine ? `<div class="chat-msg-sender">${roleIcon} ${m.sender} <span class="chat-outlet">${m.outlet || ''}</span></div>` : ''}
+        <div class="chat-bubble">${escapeHtml(m.text)}</div>
+        <div class="chat-time">${time}</div>
+      </div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+function renderChatOnline() {
+  const el = document.getElementById('chat-online-list');
+  if (!el) return;
+  const users = getUsers();
+  el.innerHTML = users.map(u => {
+    const roleIcon = { manager: '🔑', cashier: '🧾', kitchen: '👨‍🍳' }[u.role] || '👤';
+    return `<div class="chat-online-item">
+      <span class="chat-online-dot"></span>
+      ${roleIcon} ${u.name}
+      <span class="chat-outlet">${u.outlet || ''}</span>
+    </div>`;
+  }).join('') || '<div style="color:var(--text3);font-size:13px">No staff yet.</div>';
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 function initApp() {

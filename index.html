@@ -66,8 +66,8 @@
 
     <!-- Footer -->
     <footer class="mall-footer">
-      <div>Copyright 2026 · Blue Ocean Mall Express</div>
-      <div style="font-size:12px;opacity:0.5;margin-top:4px">Powered by EasyPOS</div>
+      <div>🌊 Blue Ocean Mall Express · School Business Expo</div>
+      <div style="font-size:12px;opacity:0.5;margin-top:4px">Powered by ExpoSell POS</div>
     </footer>
   </div>
 
@@ -188,6 +188,7 @@
         <li><button class="nav-btn" data-page="reports"><span class="nav-icon">📊</span> Reports</button></li>
         <li><button class="nav-btn" data-page="restaurant"><span class="nav-icon">🍽</span> Restaurant</button></li>
         <li><button class="nav-btn" data-page="shifts"><span class="nav-icon">⏱</span> Shifts</button></li>
+        <li><button class="nav-btn" data-page="chat"><span class="nav-icon">💬</span> Chat</button></li>
         <li><button class="nav-btn" data-page="invoice"><span class="nav-icon">🧾</span> Invoices</button></li>
         <li><button class="nav-btn" data-page="admin"><span class="nav-icon">⚙️</span> Admin</button></li>
       </ul>
@@ -227,10 +228,55 @@
                 <button class="pay-method" data-method="card">Card</button>
                 <button class="pay-method" data-method="qr">QR / Digital</button>
               </div>
+              <!-- Cash area -->
               <div id="cash-input-area" class="cash-area">
                 <label>Cash given</label>
                 <input type="number" id="cash-received" placeholder="0.00" min="0" step="0.01" />
                 <div class="change-display" id="change-display"></div>
+              </div>
+              <!-- Card / QR area -->
+              <div id="card-input-area" class="cash-area" style="display:none">
+                <label>Card Type</label>
+                <select id="card-type-select" class="card-type-select">
+                  <optgroup label="AMEX Debit">
+                    <option>AMEX GREEN DEBIT</option>
+                    <option>AMEX GOLD DEBIT</option>
+                  </optgroup>
+                  <optgroup label="VISA Debit">
+                    <option>VISA DEBIT</option>
+                    <option>VISA PLAT. DEBIT</option>
+                    <option>BML ISLAMIC VISA PLAT. DEBIT</option>
+                    <option>BML ISLAMIC VISA DEBIT</option>
+                  </optgroup>
+                  <optgroup label="Mastercard Debit">
+                    <option>MASTERCARD DEBIT</option>
+                    <option>BML ISLAMIC MASTER BUSINESS DEBIT</option>
+                  </optgroup>
+                  <optgroup label="AMEX Credit">
+                    <option>AMEX PLAT. CREDIT</option>
+                    <option>AMEX GOLD CREDIT</option>
+                    <option>AMEX GREEN CREDIT</option>
+                  </optgroup>
+                  <optgroup label="Mastercard Credit">
+                    <option>MASTERCARD WORLD CREDIT</option>
+                    <option>MASTERCARD PLAT. CREDIT</option>
+                    <option>MASTERCARD GOLD CREDIT</option>
+                    <option>MASTERCARD STANDARD CREDIT</option>
+                  </optgroup>
+                  <optgroup label="VISA Credit">
+                    <option>VISA INF. CREDIT</option>
+                    <option>VISA PLAT. CREDIT</option>
+                    <option>VISA GOLD CREDIT</option>
+                    <option>VISA CLASSIC CREDIT</option>
+                  </optgroup>
+                </select>
+                <label style="margin-top:10px">Reference No.</label>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span style="font-family:'DM Mono',monospace;font-size:14px;font-weight:600;color:var(--accent)">BLAZ</span>
+                  <input type="text" id="blaz-ref" placeholder="Enter 16 digits" maxlength="16"
+                    style="flex:1;padding:8px 10px;border:1px solid var(--border2);border-radius:6px;font-family:'DM Mono',monospace;font-size:14px;letter-spacing:2px;background:var(--bg);color:var(--text);outline:none"/>
+                </div>
+                <div id="blaz-status" style="font-size:12px;min-height:18px;margin-top:4px;font-family:'DM Mono',monospace"></div>
               </div>
               <button class="btn-checkout" id="checkout-btn">Charge</button>
             </div>
@@ -333,6 +379,26 @@
               <thead><tr><th>Item</th><th>Category</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead>
               <tbody id="r-menu-tbody"></tbody>
             </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- CHAT PAGE -->
+      <section id="page-chat" class="page">
+        <div class="page-header"><h1>Staff Chat</h1></div>
+        <div class="chat-layout">
+          <div class="chat-box">
+            <div class="chat-messages" id="chat-messages">
+              <div class="chat-empty">No messages yet. Say hi! 👋</div>
+            </div>
+            <div class="chat-input-row">
+              <input type="text" id="chat-input" placeholder="Type a message..." maxlength="500" autocomplete="off"/>
+              <button class="btn-primary" id="chat-send-btn">Send</button>
+            </div>
+          </div>
+          <div class="chat-sidebar">
+            <h3>Online Staff</h3>
+            <div id="chat-online-list"></div>
           </div>
         </div>
       </section>
@@ -466,6 +532,26 @@
             style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:6px;font-size:15px;font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);outline:none"/>
         </div>
         <div id="rp-change" style="font-family:'DM Mono',monospace;font-size:14px;font-weight:500;min-height:20px;margin-bottom:8px"></div>
+      </div>
+      <div id="rp-card-area" style="display:none">
+        <div class="form-group"><label>Card Type</label>
+          <select id="rp-card-type" class="card-type-select">
+            <optgroup label="AMEX Debit"><option>AMEX GREEN DEBIT</option><option>AMEX GOLD DEBIT</option></optgroup>
+            <optgroup label="VISA Debit"><option>VISA DEBIT</option><option>VISA PLAT. DEBIT</option><option>BML ISLAMIC VISA PLAT. DEBIT</option><option>BML ISLAMIC VISA DEBIT</option></optgroup>
+            <optgroup label="Mastercard Debit"><option>MASTERCARD DEBIT</option><option>BML ISLAMIC MASTER BUSINESS DEBIT</option></optgroup>
+            <optgroup label="AMEX Credit"><option>AMEX PLAT. CREDIT</option><option>AMEX GOLD CREDIT</option><option>AMEX GREEN CREDIT</option></optgroup>
+            <optgroup label="Mastercard Credit"><option>MASTERCARD WORLD CREDIT</option><option>MASTERCARD PLAT. CREDIT</option><option>MASTERCARD GOLD CREDIT</option><option>MASTERCARD STANDARD CREDIT</option></optgroup>
+            <optgroup label="VISA Credit"><option>VISA INF. CREDIT</option><option>VISA PLAT. CREDIT</option><option>VISA GOLD CREDIT</option><option>VISA CLASSIC CREDIT</option></optgroup>
+          </select>
+        </div>
+        <div class="form-group"><label>Reference No.</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-family:'DM Mono',monospace;font-size:14px;font-weight:600;color:var(--accent)">BLAZ</span>
+            <input type="text" id="rp-blaz-ref" placeholder="Enter 16 digits" maxlength="16"
+              style="flex:1;padding:8px 10px;border:1px solid var(--border2);border-radius:6px;font-family:'DM Mono',monospace;font-size:14px;letter-spacing:2px;background:var(--bg);color:var(--text);outline:none"/>
+          </div>
+          <div id="rp-blaz-status" style="font-size:12px;min-height:18px;margin-top:4px;font-family:'DM Mono',monospace"></div>
+        </div>
       </div>
       <div class="auth-error" id="rp-error"></div>
       <div class="modal-actions">
